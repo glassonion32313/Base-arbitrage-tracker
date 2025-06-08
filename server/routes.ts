@@ -551,6 +551,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Historical arbitrage data routes
+  app.get('/api/arbitrage-history', async (req, res) => {
+    try {
+      const { userId, status, tokenPair, limit, offset, dateFrom, dateTo } = req.query;
+      
+      const filters: any = {};
+      if (userId) filters.userId = parseInt(userId as string);
+      if (status) filters.status = status as string;
+      if (tokenPair) filters.tokenPair = tokenPair as string;
+      if (limit) filters.limit = parseInt(limit as string);
+      if (offset) filters.offset = parseInt(offset as string);
+      if (dateFrom) filters.dateFrom = new Date(dateFrom as string);
+      if (dateTo) filters.dateTo = new Date(dateTo as string);
+      
+      const history = await storage.getArbitrageHistory(filters);
+      res.json(history);
+    } catch (error) {
+      console.error('Error fetching arbitrage history:', error);
+      res.status(500).json({ error: 'Failed to fetch arbitrage history' });
+    }
+  });
+
+  // Analytics routes
+  app.get('/api/analytics/daily-stats', async (req, res) => {
+    try {
+      const { dateFrom, dateTo } = req.query;
+      
+      const fromDate = dateFrom ? new Date(dateFrom as string) : undefined;
+      const toDate = dateTo ? new Date(dateTo as string) : undefined;
+      
+      const stats = await storage.getDailyStats(fromDate, toDate);
+      res.json(stats);
+    } catch (error) {
+      console.error('Error fetching daily stats:', error);
+      res.status(500).json({ error: 'Failed to fetch daily stats' });
+    }
+  });
+
+  app.get('/api/analytics/token-pairs', async (req, res) => {
+    try {
+      const { limit } = req.query;
+      const limitNum = limit ? parseInt(limit as string) : undefined;
+      
+      const stats = await storage.getTokenPairStats(limitNum);
+      res.json(stats);
+    } catch (error) {
+      console.error('Error fetching token pair stats:', error);
+      res.status(500).json({ error: 'Failed to fetch token pair stats' });
+    }
+  });
+
+  app.get('/api/analytics/performance', async (req, res) => {
+    try {
+      const { userId, days } = req.query;
+      const userIdNum = userId ? parseInt(userId as string) : undefined;
+      const daysNum = days ? parseInt(days as string) : undefined;
+      
+      const metrics = await storage.getPerformanceMetrics(userIdNum, daysNum);
+      res.json(metrics);
+    } catch (error) {
+      console.error('Error fetching performance metrics:', error);
+      res.status(500).json({ error: 'Failed to fetch performance metrics' });
+    }
+  });
+
   // Start price monitoring automatically
   priceMonitor.startMonitoring();
 

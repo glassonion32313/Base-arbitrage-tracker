@@ -27,14 +27,14 @@ export class ContractService {
   private contractAddress: string;
   private contractABI: any[];
   
-  // Base network DEX router addresses
+  // Base network DEX router addresses (actual router contracts, not factories)
   private readonly DEX_ROUTERS = {
-    'Uniswap': '0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24',
-    'Uniswap V3': '0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24',
+    'Uniswap': '0x2626664c2603336E57B271c5C0b26F421741e481',
+    'Uniswap V3': '0x2626664c2603336E57B271c5C0b26F421741e481',
     'SushiSwap': '0x6BDED42c6DA8FBf0d2bA55B2fa120C5e0c8D7891',
     'BaseSwap': '0x327Df1E6de05895d2ab08513aaDD9313Fe505d86',
     'Aerodrome': '0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43',
-    'Velodrome': '0xa062aE8A9c5e11aaA026fc2670B0D65cCc8B2858',
+    'Velodrome': '0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9',
     'PancakeSwap': '0x02a84c1b3BBD7401a5f7fa98a384EBC70bB5749E',
     'Curve': '0x8AE125E8653821E851F12A49F7765db9a9ce7384',
     'Maverick': '0x39E098A153Ad69834a9Dac32f0FCa92066aD03f4'
@@ -168,7 +168,12 @@ export class ContractService {
   }
 
   private getDexRouter(dexName: string): string {
-    return this.DEX_ROUTERS[dexName as keyof typeof this.DEX_ROUTERS] || dexName;
+    const address = this.DEX_ROUTERS[dexName as keyof typeof this.DEX_ROUTERS];
+    if (!address) {
+      console.warn(`DEX router not found for ${dexName}, using Uniswap as fallback`);
+      return this.DEX_ROUTERS['Uniswap'];
+    }
+    return address;
   }
 
   async getCurrentGasPrice(): Promise<{
