@@ -56,6 +56,29 @@ export const settings = pgTable("settings", {
   value: text("value").notNull(),
 });
 
+// User accounts for authentication and private key storage
+export const userAccounts = pgTable("user_accounts", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  privateKeyEncrypted: text("private_key_encrypted"), // Encrypted private key
+  walletAddress: text("wallet_address").unique(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  lastLoginAt: timestamp("last_login_at"),
+});
+
+// User sessions for authentication
+export const userSessions = pgTable("user_sessions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => userAccounts.id),
+  sessionToken: text("session_token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertArbitrageOpportunitySchema = createInsertSchema(arbitrageOpportunities).omit({
   id: true,
   lastUpdated: true,
@@ -75,6 +98,18 @@ export const insertSettingSchema = createInsertSchema(settings).omit({
   id: true,
 });
 
+export const insertUserAccountSchema = createInsertSchema(userAccounts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastLoginAt: true,
+});
+
+export const insertUserSessionSchema = createInsertSchema(userSessions).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type ArbitrageOpportunity = typeof arbitrageOpportunities.$inferSelect;
 export type InsertArbitrageOpportunity = z.infer<typeof insertArbitrageOpportunitySchema>;
 export type Transaction = typeof transactions.$inferSelect;
@@ -83,3 +118,7 @@ export type Dex = typeof dexes.$inferSelect;
 export type InsertDex = z.infer<typeof insertDexSchema>;
 export type Setting = typeof settings.$inferSelect;
 export type InsertSetting = z.infer<typeof insertSettingSchema>;
+export type UserAccount = typeof userAccounts.$inferSelect;
+export type InsertUserAccount = z.infer<typeof insertUserAccountSchema>;
+export type UserSession = typeof userSessions.$inferSelect;
+export type InsertUserSession = z.infer<typeof insertUserSessionSchema>;

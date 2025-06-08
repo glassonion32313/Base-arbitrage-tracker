@@ -3,7 +3,8 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from 'ws';
 import { storage } from "./storage";
 import { priceMonitor } from "./price-monitor";
-import { insertArbitrageOpportunitySchema, insertTransactionSchema } from "@shared/schema";
+import { insertArbitrageOpportunitySchema, insertTransactionSchema, insertUserAccountSchema } from "@shared/schema";
+import { authService } from "./auth-service";
 import { z } from "zod";
 
 import { getContractIntegration } from "./contract-integration";
