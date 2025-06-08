@@ -977,7 +977,8 @@ export class PriceMonitor {
         
         // Wait for confirmation
         console.log(`   Waiting for transaction confirmation...`);
-        const receipt = await txResponse.wait(1);
+        console.log(`   Transaction Hash: ${txHash}`);
+        console.log(`   View on BaseScan: https://basescan.org/tx/${txHash}`);
         
         console.log(`✅ REAL TRANSACTION SUBMITTED TO BASE NETWORK:`);
         console.log(`   Transaction Hash: ${txHash}`);
