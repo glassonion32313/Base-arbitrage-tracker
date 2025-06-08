@@ -283,10 +283,13 @@ export default function TradeModal({ opportunity, isOpen, onClose }: TradeModalP
               {executeTradeMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Executing...
+                  {useFlashloan ? "Executing Flashloan..." : "Executing Trade..."}
                 </>
               ) : (
-                "Confirm Trade"
+                <>
+                  {useFlashloan && <Zap className="w-4 h-4 mr-2" />}
+                  {useFlashloan ? "Execute Flashloan Arbitrage" : "Confirm Trade"}
+                </>
               )}
             </Button>
           </div>

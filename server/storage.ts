@@ -76,6 +76,8 @@ export class MemStorage implements IStorage {
 
     // Initialize with some Base network DEXes
     this.initializeDefaultDexes();
+    // Add some sample arbitrage opportunities
+    this.initializeSampleOpportunities();
   }
 
   private initializeDefaultDexes() {
@@ -106,6 +108,72 @@ export class MemStorage implements IStorage {
     defaultDexes.forEach(dex => {
       const id = this.currentDexId++;
       this.dexesList.set(id, { ...dex, id });
+    });
+  }
+
+  private initializeSampleOpportunities() {
+    const sampleOpportunities: InsertArbitrageOpportunity[] = [
+      {
+        tokenPair: "WETH/USDC",
+        token0Symbol: "WETH",
+        token1Symbol: "USDC",
+        token0Address: "0x4200000000000000000000000000000000000006",
+        token1Address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        buyDex: "Uniswap V3",
+        sellDex: "SushiSwap",
+        buyPrice: "1845.20",
+        sellPrice: "1847.80",
+        priceDifference: "0.14",
+        estimatedProfit: "25.89",
+        gasCost: "5.20",
+        netProfit: "20.69",
+        liquidity: "2850000.00",
+        isActive: true,
+      },
+      {
+        tokenPair: "WBTC/USDT",
+        token0Symbol: "WBTC",
+        token1Symbol: "USDT",
+        token0Address: "0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA",
+        token1Address: "0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2",
+        buyDex: "BaseSwap",
+        sellDex: "Uniswap V3",
+        buyPrice: "28520.45",
+        sellPrice: "28575.20",
+        priceDifference: "0.19",
+        estimatedProfit: "54.75",
+        gasCost: "8.30",
+        netProfit: "46.45",
+        liquidity: "1200000.00",
+        isActive: true,
+      },
+      {
+        tokenPair: "DAI/USDC",
+        token0Symbol: "DAI",
+        token1Symbol: "USDC",
+        token0Address: "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb",
+        token1Address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        buyDex: "SushiSwap",
+        sellDex: "BaseSwap",
+        buyPrice: "1.0002",
+        sellPrice: "1.0008",
+        priceDifference: "0.06",
+        estimatedProfit: "6.00",
+        gasCost: "3.80",
+        netProfit: "2.20",
+        liquidity: "850000.00",
+        isActive: true,
+      },
+    ];
+
+    sampleOpportunities.forEach(opportunity => {
+      const id = this.currentOpportunityId++;
+      const newOpportunity: ArbitrageOpportunity = {
+        ...opportunity,
+        id,
+        lastUpdated: new Date(),
+      };
+      this.opportunities.set(id, newOpportunity);
     });
   }
 
