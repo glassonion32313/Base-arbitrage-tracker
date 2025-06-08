@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RefreshCw, TrendingUp, Activity, Bell, Shield, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useWebSocketOpportunities } from "@/hooks/use-websocket";
 
 export default function ArbitrageScanner() {
   const [autoRefresh, setAutoRefresh] = useState(true);

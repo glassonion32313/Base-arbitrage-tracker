@@ -26,13 +26,8 @@ export default function MonitoringDashboard() {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchAllData();
-    
-    if (autoRefresh) {
-      const interval = setInterval(fetchAllData, 10000); // Update every 10 seconds
-      return () => clearInterval(interval);
-    }
-  }, [autoRefresh]);
+    fetchInitialData();
+  }, []);
 
   // WebSocket connection for real-time updates
   const { isConnected, lastMessage, connectionStatus } = useWebSocket();
@@ -94,8 +89,6 @@ export default function MonitoringDashboard() {
           description: "Real-time price monitoring is now active",
           variant: "default"
         });
-        
-        await fetchStatus();
       }
     } catch (error) {
       toast({
@@ -121,8 +114,6 @@ export default function MonitoringDashboard() {
           description: "Price monitoring has been disabled",
           variant: "default"
         });
-        
-        await fetchStatus();
       }
     } catch (error) {
       toast({
