@@ -7,7 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
-import { Eye, EyeOff, Key, User, Wallet } from "lucide-react";
+import { Eye, EyeOff, Key, User, Wallet, ArrowLeft } from "lucide-react";
+import { Link } from "wouter";
 
 export default function AccountSettings() {
   const [privateKey, setPrivateKey] = useState("");
@@ -20,7 +21,7 @@ export default function AccountSettings() {
     mutationFn: async (privateKey: string) => {
       return await apiRequest("/api/auth/private-key", {
         method: "POST",
-        body: { privateKey },
+        body: { privateKey } as any,
       });
     },
     onSuccess: (response: any) => {
@@ -59,9 +60,17 @@ export default function AccountSettings() {
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <div className="flex items-center space-x-2">
-        <User className="h-6 w-6" />
-        <h1 className="text-3xl font-bold">Account Settings</h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <User className="h-6 w-6" />
+          <h1 className="text-3xl font-bold">Account Settings</h1>
+        </div>
+        <Link href="/">
+          <Button variant="outline" className="flex items-center space-x-2">
+            <ArrowLeft className="h-4 w-4" />
+            <span>Back to Trading</span>
+          </Button>
+        </Link>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">

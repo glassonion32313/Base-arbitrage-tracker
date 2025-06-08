@@ -30,6 +30,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={ArbitrageScanner} />
+      <Route path="/account" component={AccountSettings} />
       <Route component={NotFound} />
     </Switch>
   );

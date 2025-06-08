@@ -4,7 +4,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import SimpleLogin from "@/components/simple-login";
-import { User, LogOut } from 'lucide-react';
+import { User, LogOut, Settings } from 'lucide-react';
+import { Link } from "wouter";
 
 export default function WorkingAuthHeader() {
   const [showLogin, setShowLogin] = useState(false);
@@ -69,6 +70,13 @@ export default function WorkingAuthHeader() {
           </div>
           
           <DropdownMenuSeparator />
+          
+          <Link href="/account">
+            <DropdownMenuItem className="cursor-pointer">
+              <Settings className="h-4 w-4 mr-2" />
+              Account Settings
+            </DropdownMenuItem>
+          </Link>
           
           <DropdownMenuItem 
             onClick={logout}
