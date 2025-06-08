@@ -99,14 +99,19 @@ export class ContractService {
       const buyDex = this.getDexRouter(params.buyDex);
       const sellDex = this.getDexRouter(params.sellDex);
 
+      // Limit flashloan amount to prevent BAL#528 error
+      const maxFlashloanAmount = ethers.parseEther("1.0"); // 1 token max
+      const requestedAmount = ethers.parseEther(params.amountIn);
+      const safeAmount = requestedAmount > maxFlashloanAmount ? maxFlashloanAmount : requestedAmount;
+
       // Create struct parameter as expected by contract
       const arbitrageStruct = {
         tokenA,
         tokenB,
-        amountIn: ethers.parseEther(params.amountIn),
+        amountIn: safeAmount,
         buyDex,
         sellDex,
-        minProfit: ethers.parseEther(params.minProfit)
+        minProfit: ethers.parseEther("0.001") // Lower minimum profit threshold
       };
 
       // Create function data manually to avoid ENS resolution
