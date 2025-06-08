@@ -39,6 +39,9 @@ export default function NotificationCenter() {
   const [recentAlerts, setRecentAlerts] = useState<ProfitAlert[]>([]);
   const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>("default");
   const { toast } = useToast();
+  
+  // WebSocket connection for real-time notifications
+  const { lastMessage, isConnected } = useWebSocket();
 
   useEffect(() => {
     // Check notification permission status
@@ -62,6 +65,34 @@ export default function NotificationCenter() {
       setRecentAlerts(alerts);
     }
   }, []);
+
+  // Listen for WebSocket real-time opportunity alerts
+  useEffect(() => {
+    if (!lastMessage || !settings.enabled) return;
+
+    if (lastMessage.type === 'new_opportunity' && lastMessage.data) {
+      const opportunity = lastMessage.data;
+      const netProfit = parseFloat(opportunity.netProfit || '0');
+      
+      if (netProfit >= settings.minProfitThreshold) {
+        const alertId = `${opportunity.tokenPair}-${opportunity.buyDex}-${opportunity.sellDex}-${opportunity.id}`;
+        const existingAlert = recentAlerts.find(alert => alert.id === alertId);
+        
+        if (!existingAlert) {
+          const newAlert: ProfitAlert = {
+            id: alertId,
+            tokenPair: opportunity.tokenPair,
+            profit: netProfit,
+            timestamp: new Date(),
+            buyDex: opportunity.buyDex,
+            sellDex: opportunity.sellDex
+          };
+          
+          triggerAlert(newAlert);
+        }
+      }
+    }
+  }, [lastMessage, settings.enabled, settings.minProfitThreshold, recentAlerts]);
 
   useEffect(() => {
     if (!settings.enabled) return;
