@@ -102,12 +102,23 @@ export class ContractService {
         ethers.parseEther(params.minProfit)
       ];
 
-      // Estimate gas
-      const gasEstimate = await contractWithSigner.executeArbitrage.estimateGas(arbitrageParams);
+      // Create function data manually to avoid ENS resolution
+      const iface = new ethers.Interface(this.contractABI);
+      const functionData = iface.encodeFunctionData('executeArbitrage', arbitrageParams);
+
+      // Estimate gas using raw transaction
+      const gasEstimate = await this.provider.estimateGas({
+        to: this.contractAddress,
+        data: functionData,
+        from: signer.address
+      });
+
       const gasPrice = await this.provider.getFeeData();
 
-      // Execute transaction
-      const tx = await contractWithSigner.executeArbitrage(arbitrageParams, {
+      // Send transaction directly
+      const tx = await signer.sendTransaction({
+        to: this.contractAddress,
+        data: functionData,
         gasLimit: gasEstimate * BigInt(120) / BigInt(100), // 20% buffer
         maxFeePerGas: gasPrice.maxFeePerGas,
         maxPriorityFeePerGas: gasPrice.maxPriorityFeePerGas
