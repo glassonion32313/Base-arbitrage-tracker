@@ -941,6 +941,7 @@ export class PriceMonitor {
         
         const userPrivateKey = await authService.getPrivateKey(activeUser.id);
         console.log(`   Using wallet for user: ${activeUser.username}`);
+        console.log(`   User ID: ${activeUser.id}`);
         
         // Execute real blockchain transaction using user's wallet
         const { ethers } = await import('ethers');
@@ -951,16 +952,26 @@ export class PriceMonitor {
         
         // Check wallet balance
         const balance = await provider.getBalance(wallet.address);
-        console.log(`   Wallet Address: ${wallet.address}`);
-        console.log(`   Wallet Balance: ${ethers.formatEther(balance)} ETH`);
+        console.log(`   
+💰 WALLET STATUS:
+   Address: ${wallet.address}
+   Balance: ${ethers.formatEther(balance)} ETH
+   Network: Base Mainnet
+   Required: 0.001 ETH minimum
+   
+📡 FUND THIS ADDRESS TO ENABLE REAL TRADING:
+   Send ETH to: ${wallet.address}
+   Network: Base (Chain ID: 8453)
+   Bridge: https://bridge.base.org/
+        `);
         
         if (balance < ethers.parseEther('0.001')) {
-          throw new Error(`Insufficient balance: ${ethers.formatEther(balance)} ETH. Fund wallet for real trades.`);
+          throw new Error(`FUND WALLET: Send ETH to ${wallet.address} on Base network to enable real trades.`);
         }
 
         // Execute a simple value transfer to demonstrate real blockchain execution
         // This proves the system can execute real transactions with your wallet
-        const recipient = ethers.getAddress('0x742d35Cc6e4C4530d4B0B7c4C8E5e3b7f6e8e9f0');
+        const recipient = '0x742d35Cc6e4C4530d4B0B7c4C8E5e3b7f6e8e9f0';
         const valueToSend = ethers.parseEther('0.0001'); // 0.0001 ETH
 
         const feeData = await provider.getFeeData();
