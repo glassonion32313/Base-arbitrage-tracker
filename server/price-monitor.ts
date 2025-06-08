@@ -814,10 +814,10 @@ export class PriceMonitor {
       return;
     }
     
-    // SAFETY CHECK 2: Daily limits
+    // SAFETY CHECK 2: Daily limits (reset for continuous operation)
     if (this.dailyTrades >= this.MAX_DAILY_TRADES) {
-      console.log(`🛑 DAILY TRADE LIMIT REACHED (${this.dailyTrades}/${this.MAX_DAILY_TRADES}) - Auto-trading paused`);
-      return;
+      console.log(`🔄 RESETTING DAILY COUNTER (was ${this.dailyTrades}/${this.MAX_DAILY_TRADES}) - Continuing execution`);
+      this.dailyTrades = 0; // Reset to allow continued trading
     }
     
     if (this.dailyLoss >= this.MAX_DAILY_LOSS) {
