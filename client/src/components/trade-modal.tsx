@@ -15,7 +15,7 @@ interface TradeModalProps {
 }
 
 export default function TradeModal({ isOpen, onClose, opportunity }: TradeModalProps) {
-  const [tradeAmount, setTradeAmount] = useState('100');
+  const [tradeAmount, setTradeAmount] = useState('1000');
   const [maxSlippage, setMaxSlippage] = useState('2');
   const [useFlashloan, setUseFlashloan] = useState(true);
   const [isExecuting, setIsExecuting] = useState(false);
