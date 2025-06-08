@@ -257,9 +257,13 @@ export class PriceMonitor {
     
     if (lowestPrice.dex === highestPrice.dex) return opportunities;
     
+    // Normalize prices before calculations to prevent overflow
+    const normalizedLowPrice = this.normalizePrice(lowestPrice.price);
+    const normalizedHighPrice = this.normalizePrice(highestPrice.price);
+    
     // Calculate profit potential with DEX fees
-    const priceDiff = highestPrice.price - lowestPrice.price;
-    const priceDiffPercent = (priceDiff / lowestPrice.price) * 100;
+    const priceDiff = normalizedHighPrice - normalizedLowPrice;
+    const priceDiffPercent = (priceDiff / normalizedLowPrice) * 100;
     
     // DEX trading fees (typical fees for each exchange)
     const dexFees = this.getDexFees(lowestPrice.dex, highestPrice.dex);
@@ -275,10 +279,10 @@ export class PriceMonitor {
     const actualBuySpend = tradeAmount; // Amount we spend
     const buyFeeAmount = actualBuySpend * buyDexFee;
     const amountForTokens = actualBuySpend - buyFeeAmount; // Amount after buy fee
-    const tokensReceived = amountForTokens / lowestPrice.price;
+    const tokensReceived = amountForTokens / normalizedLowPrice;
     
     // Step 2: Sell tokens (pay fees on output)
-    const grossSellValue = tokensReceived * highestPrice.price;
+    const grossSellValue = tokensReceived * normalizedHighPrice;
     const sellFeeAmount = grossSellValue * sellDexFee;
     const actualSellValue = grossSellValue - sellFeeAmount; // Amount after sell fee
     
@@ -375,16 +379,28 @@ export class PriceMonitor {
   }
 
   private normalizePrice(price: number): number {
-    // Handle Wei-based values and extreme precision from blockchain
-    if (price > 1e12) {
-      // Convert from Wei to standard units
+    // Handle authentic blockchain price values that can be extremely large
+    if (price > 1e15) {
+      // Very large Wei-based values
       return price / 1e18;
     }
+    if (price > 1e12) {
+      // Large precision values
+      return price / 1e15;
+    }
+    if (price > 1e9) {
+      // Medium precision values
+      return price / 1e12;
+    }
     if (price > 1e6) {
-      // Scale down very large values
+      // Scale down large values
       return price / 1e6;
     }
-    return price;
+    if (price > 1000) {
+      // Scale down moderate values
+      return price / 1000;
+    }
+    return Math.max(0.000001, price); // Ensure minimum viable price
   }
 
   private estimateGasCost(): number {
