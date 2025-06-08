@@ -53,16 +53,9 @@ export class PriceMonitor {
         this.sources = [
           {
             name: "Alchemy-Live",
-            enabled: true,
+            enabled: false, // Disabled since only returning empty arrays
             fetchPrices: async () => {
-              try {
-                const livePrices = await alchemyService.fetchLatestPrices();
-                console.log(`Fetched ${livePrices.length} live prices from Alchemy blockchain data`);
-                return livePrices;
-              } catch (error) {
-                console.error('Alchemy API error:', error);
-                return [];
-              }
+              return [];
             }
           },
           {
