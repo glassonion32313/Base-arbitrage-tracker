@@ -66,28 +66,9 @@ export class AlchemyService {
   }
 
   async fetchLatestPrices(blockNumber?: number): Promise<PriceUpdate[]> {
-    const updates: PriceUpdate[] = [];
-    const timestamp = new Date();
-    const block = blockNumber || await this.provider.getBlockNumber();
-
-    // Fetch prices from different DEXes using direct contract calls
-    const tokens = ['WETH', 'WBTC', 'USDC', 'LINK', 'UNI'];
-    
-    for (const token of tokens) {
-      // Simulate different DEX prices (in production, call actual DEX contracts)
-      const basePrice = await this.getTokenPrice(token);
-      
-      updates.push({
-        token: `${token}/USDC`,
-        price: basePrice * (0.9995 + Math.random() * 0.001),
-        dex: 'Uniswap V3',
-        timestamp,
-        blockNumber: block
-      });
-      
-      updates.push({
-        token: `${token}/USDC`,
-        price: basePrice * (0.998 + Math.random() * 0.004),
+    // Disabled synthetic price generation - only return authentic blockchain data
+    console.log('Alchemy synthetic price generation disabled - using only authentic blockchain data');
+    return [];
         dex: 'SushiSwap',
         timestamp,
         blockNumber: block

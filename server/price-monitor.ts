@@ -441,7 +441,7 @@ export class PriceMonitor {
         throw new Error('No live prices available from blockchain');
       }
       
-      console.log(`Successfully fetched ${onChainPrices.length} live prices from Base network DEXes`);
+      console.log(`Successfully fetched ${onChainPrices.length} authentic prices from Base network DEXes`);
       return onChainPrices;
     } catch (error) {
       console.error('Failed to fetch live prices:', error);
@@ -560,42 +560,11 @@ export class PriceMonitor {
   private async fetchOnChainPrices(): Promise<TokenPrice[]> {
     try {
       const { onChainPriceService } = await import('./on-chain-price-service');
-      const basePrices = await onChainPriceService.fetchOnChainPrices();
+      const authenticPrices = await onChainPriceService.fetchOnChainPrices();
       
-      // Generate price variations across different DEXs to simulate real market conditions
-      const enhancedPrices: TokenPrice[] = [];
-      
-      for (const basePrice of basePrices) {
-        // Add the original price
-        enhancedPrices.push(basePrice);
-        
-        // Generate variations for other DEXs with realistic spreads
-        const dexVariations = [
-          { dex: 'Uniswap V3', spread: 0.002 }, // 0.2% spread
-          { dex: 'SushiSwap', spread: 0.003 },  // 0.3% spread
-          { dex: 'BaseSwap', spread: 0.0025 },  // 0.25% spread
-          { dex: 'Aerodrome', spread: 0.0035 }, // 0.35% spread
-        ];
-        
-        for (const variation of dexVariations) {
-          if (variation.dex !== basePrice.dex) {
-            // Random spread direction and magnitude
-            const spreadDirection = Math.random() > 0.5 ? 1 : -1;
-            const spreadMagnitude = variation.spread * (0.5 + Math.random() * 0.5); // 50-100% of max spread
-            const priceVariation = basePrice.price * (1 + spreadDirection * spreadMagnitude);
-            
-            enhancedPrices.push({
-              symbol: basePrice.symbol,
-              address: basePrice.address,
-              price: priceVariation,
-              dex: variation.dex,
-              timestamp: basePrice.timestamp
-            });
-          }
-        }
-      }
-      
-      return enhancedPrices;
+      // Return only authentic blockchain prices - no synthetic data
+      console.log(`Fetched ${authenticPrices.length} authentic on-chain prices from blockchain`);
+      return authenticPrices;
     } catch (error) {
       console.error('Failed to fetch on-chain prices:', error);
       return [];
@@ -673,97 +642,7 @@ export class PriceMonitor {
     }
   }
 
-  private async fetchSushiSwapPrices(): Promise<TokenPrice[]> {
-    const data = await this.fetchAlchemyPrices();
-    const prices: TokenPrice[] = [];
-    
-    const tokens = [
-      { symbol: 'WETH', coinId: 'ethereum' },
-      { symbol: 'WBTC', coinId: 'bitcoin' },
-      { symbol: 'LINK', coinId: 'chainlink' },
-      { symbol: 'UNI', coinId: 'uniswap' }
-    ];
-    
-    tokens.forEach(token => {
-      if (data[token.coinId]) {
-        prices.push({
-          symbol: `${token.symbol}/USDC`,
-          address: this.getTokenAddress(token.symbol),
-          price: data[token.coinId].usd * (0.998 + Math.random() * 0.004),
-          dex: "SushiSwap",
-          timestamp: new Date()
-        });
-      }
-    });
-    
-    return prices;
-  }
-
-  private async fetchBaseSwapPrices(): Promise<TokenPrice[]> {
-    const data = await this.fetchAlchemyPrices();
-    const prices: TokenPrice[] = [];
-    
-    const tokens = [
-      { symbol: 'WETH', coinId: 'ethereum' },
-      { symbol: 'WBTC', coinId: 'bitcoin' },
-      { symbol: 'LINK', coinId: 'chainlink' },
-      { symbol: 'UNI', coinId: 'uniswap' }
-    ];
-    
-    tokens.forEach(token => {
-      if (data[token.coinId]) {
-        prices.push({
-          symbol: `${token.symbol}/USDC`,
-          address: this.getTokenAddress(token.symbol),
-          price: data[token.coinId].usd * (0.996 + Math.random() * 0.008),
-          dex: "BaseSwap",
-          timestamp: new Date()
-        });
-      }
-    });
-    
-    return prices;
-  }
-
-  private async fetchAerodromePrices(): Promise<TokenPrice[]> {
-    return [
-      { symbol: 'WETH/USDC', address: '0x4200000000000000000000000000000000000006', price: 2660 + Math.random() * 90, dex: 'Aerodrome', timestamp: new Date() },
-      { symbol: 'WBTC/USDT', address: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA', price: 45200 + Math.random() * 1800, dex: 'Aerodrome', timestamp: new Date() },
-      { symbol: 'LINK/USDT', address: '0x88Fb150BDc53A65fe94Dea0c9BA0a6dAf8C6e196', price: 15.2 + Math.random() * 2.8, dex: 'Aerodrome', timestamp: new Date() }
-    ];
-  }
-
-  private async fetchVelodromePrices(): Promise<TokenPrice[]> {
-    return [
-      { symbol: 'WETH/USDC', address: '0x4200000000000000000000000000000000000006', price: 2648 + Math.random() * 102, dex: 'Velodrome', timestamp: new Date() },
-      { symbol: 'WBTC/USDT', address: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA', price: 44980 + Math.random() * 2020, dex: 'Velodrome', timestamp: new Date() },
-      { symbol: 'LINK/USDT', address: '0x88Fb150BDc53A65fe94Dea0c9BA0a6dAf8C6e196', price: 14.95 + Math.random() * 3.05, dex: 'Velodrome', timestamp: new Date() }
-    ];
-  }
-
-  private async fetchPancakeSwapPrices(): Promise<TokenPrice[]> {
-    return [
-      { symbol: 'WETH/USDC', address: '0x4200000000000000000000000000000000000006', price: 2652 + Math.random() * 98, dex: 'PancakeSwap', timestamp: new Date() },
-      { symbol: 'WBTC/USDT', address: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA', price: 45050 + Math.random() * 1950, dex: 'PancakeSwap', timestamp: new Date() },
-      { symbol: 'LINK/USDT', address: '0x88Fb150BDc53A65fe94Dea0c9BA0a6dAf8C6e196', price: 15.05 + Math.random() * 2.95, dex: 'PancakeSwap', timestamp: new Date() }
-    ];
-  }
-
-  private async fetchCurvePrices(): Promise<TokenPrice[]> {
-    return [
-      { symbol: 'WETH/USDC', address: '0x4200000000000000000000000000000000000006', price: 2658 + Math.random() * 92, dex: 'Curve', timestamp: new Date() },
-      { symbol: 'WBTC/USDT', address: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA', price: 45120 + Math.random() * 1880, dex: 'Curve', timestamp: new Date() },
-      { symbol: 'LINK/USDT', address: '0x88Fb150BDc53A65fe94Dea0c9BA0a6dAf8C6e196', price: 15.08 + Math.random() * 2.92, dex: 'Curve', timestamp: new Date() }
-    ];
-  }
-
-  private async fetchMaverickPrices(): Promise<TokenPrice[]> {
-    return [
-      { symbol: 'WETH/USDC', address: '0x4200000000000000000000000000000000000006', price: 2649 + Math.random() * 101, dex: 'Maverick', timestamp: new Date() },
-      { symbol: 'WBTC/USDT', address: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA', price: 44970 + Math.random() * 2030, dex: 'Maverick', timestamp: new Date() },
-      { symbol: 'LINK/USDT', address: '0x88Fb150BDc53A65fe94Dea0c9BA0a6dAf8C6e196', price: 14.92 + Math.random() * 3.08, dex: 'Maverick', timestamp: new Date() }
-    ];
-  }
+  // All synthetic price functions removed - using only authentic blockchain data
 
   isMonitoring(): boolean {
     return this.monitoring;
