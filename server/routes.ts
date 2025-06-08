@@ -31,26 +31,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Set up Replit Auth middleware
   await setupAuth(app);
 
-  // Simple authentication system for demo
+  // Database-backed authentication system with private key management
   app.post('/api/auth/login', async (req, res) => {
     try {
       const { username, password } = req.body;
-      
-      // Simple demo authentication - replace with real auth in production
-      if (username && password && password.length >= 3) {
-        const user = {
-          id: Math.floor(Math.random() * 1000),
-          username: username,
-          email: `${username}@example.com`,
-          walletAddress: null,
-          hasPrivateKey: false
-        };
-        
-        const token = Buffer.from(JSON.stringify({ userId: user.id, username })).toString('base64');
-        res.json({ user, token });
-      } else {
-        res.status(401).json({ message: "Invalid credentials" });
-      }
+      const result = await authService.login({ username, password });
+      res.json(result);
     } catch (error) {
       console.error("Login error:", error);
       res.status(401).json({ message: "Invalid credentials" });
@@ -59,22 +45,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/auth/register', async (req, res) => {
     try {
-      const { username, email, password } = req.body;
-      
-      if (!username || !email || !password || password.length < 3) {
-        return res.status(400).json({ message: "All fields required, password min 3 chars" });
-      }
-      
-      const user = {
-        id: Math.floor(Math.random() * 1000),
-        username,
-        email,
-        walletAddress: null,
-        hasPrivateKey: false
-      };
-      
-      const token = Buffer.from(JSON.stringify({ userId: user.id, username })).toString('base64');
-      res.json({ user, token });
+      const { username, email, password, privateKey } = req.body;
+      const result = await authService.register({ username, email, password, privateKey });
+      res.json(result);
     } catch (error) {
       console.error("Registration error:", error);
       res.status(400).json({ message: "Registration failed" });
@@ -88,32 +61,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "No token provided" });
       }
       
-      try {
-        const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
-        if (decoded.userId && decoded.username) {
-          const user = {
-            id: decoded.userId,
-            username: decoded.username,
-            email: `${decoded.username}@example.com`,
-            walletAddress: null,
-            hasPrivateKey: false
-          };
-          res.json(user);
-        } else {
-          res.status(401).json({ message: "Invalid token" });
-        }
-      } catch {
-        res.status(401).json({ message: "Invalid token format" });
+      const user = await authService.validateToken(token);
+      if (user) {
+        res.json(user);
+      } else {
+        res.status(401).json({ message: "Invalid token" });
       }
     } catch (error) {
-      console.error("Auth validation error:", error);
-      res.status(401).json({ message: "Unauthorized" });
+      console.error("User auth error:", error);
+      res.status(401).json({ message: "Authentication failed" });
     }
   });
 
   app.post('/api/auth/logout', async (req, res) => {
-    res.json({ message: "Logged out successfully" });
+    try {
+      const token = req.headers.authorization?.replace('Bearer ', '');
+      if (token) {
+        await authService.logout(token);
+      }
+      res.json({ message: "Logged out successfully" });
+    } catch (error) {
+      console.error("Logout error:", error);
+      res.json({ message: "Logged out" });
+    }
   });
+
+  app.post('/api/auth/private-key', async (req, res) => {
+    try {
+      const token = req.headers.authorization?.replace('Bearer ', '');
+      if (!token) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+
+      const user = await authService.validateToken(token);
+      if (!user) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+
+      const { privateKey } = req.body;
+      if (!privateKey) {
+        return res.status(400).json({ message: "Private key required" });
+      }
+
+      const walletAddress = await authService.updatePrivateKey(user.id, privateKey);
+      res.json({ walletAddress, message: "Private key updated successfully" });
+    } catch (error) {
+      console.error("Private key update error:", error);
+      res.status(400).json({ message: "Failed to update private key" });
+    }
+  });
+
+
 
   // Get arbitrage opportunities with optional filters
   app.get("/api/opportunities", async (req, res) => {
@@ -146,20 +144,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Execute arbitrage with automatic flashloan - REAL BLOCKCHAIN TRANSACTIONS
   app.post('/api/arbitrage/execute-auto', async (req: any, res) => {
     try {
-      const { opportunityId, useFlashloan, privateKey } = req.body;
+      const { opportunityId, useFlashloan } = req.body;
+      
+      // Authenticate user and get their stored private key
+      const token = req.headers.authorization?.replace('Bearer ', '');
+      if (!token) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+
+      const user = await authService.validateToken(token);
+      if (!user) {
+        return res.status(401).json({ error: 'Invalid token' });
+      }
+
+      if (!user.hasPrivateKey) {
+        return res.status(400).json({ 
+          error: 'Private key not configured. Please add your private key in account settings first.' 
+        });
+      }
+
+      // Get user's private key from secure storage
+      const privateKey = await authService.getPrivateKey(user.id);
       
       // Get opportunity details
       const opportunities = await storage.getArbitrageOpportunities();
       const opportunity = opportunities.find(op => op.id === opportunityId);
       if (!opportunity) {
         return res.status(404).json({ error: 'Opportunity not found' });
-      }
-
-      // For demo purposes, require private key in request body
-      if (!privateKey) {
-        return res.status(400).json({ 
-          error: 'Private key required for transaction execution. This is a demo - in production, use secure wallet integration.' 
-        });
       }
 
       let flashloanAmount = '0.1'; // Demo amount
@@ -193,7 +204,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Record transaction in database
         await storage.createTransaction({
           txHash,
-          userAddress: 'demo-user',
+          userAddress: user.walletAddress || 'unknown',
           tokenPair: opportunity.tokenPair,
           buyDex: opportunity.buyDex,
           sellDex: opportunity.sellDex,
