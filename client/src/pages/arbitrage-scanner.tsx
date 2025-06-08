@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import SimpleAuthHeader from "@/components/simple-auth-header";
+import UserAuthHeader from "@/components/user-auth-header";
 import ArbitrageTable from "@/components/arbitrage-table";
 import StatsCards from "@/components/stats-cards";
 import FiltersSidebar from "@/components/filters-sidebar";
@@ -124,7 +124,7 @@ export default function ArbitrageScanner() {
               </Button>
 
               {/* User Authentication */}
-              <SimpleAuthHeader />
+              <UserAuthHeader />
             </div>
           </div>
         </div>
