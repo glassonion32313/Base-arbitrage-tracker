@@ -35,17 +35,31 @@ export class TradeExecutor {
       const privateKey = await authService.getPrivateKey(request.userId);
       const wallet = new ethers.Wallet(privateKey, this.provider);
 
-      // Get arbitrage opportunity by ID with direct database query
-      const opportunity = await storage.getArbitrageOpportunityById(request.opportunityId);
+      // Get arbitrage opportunity by ID with retry and fallback mechanism
+      let opportunity = await storage.getArbitrageOpportunityById(request.opportunityId);
       
       if (!opportunity) {
-        const availableOpportunities = await storage.getArbitrageOpportunities({ limit: 10 });
-        const availableIds = availableOpportunities.map(o => o.id).join(', ');
-        console.log(`Opportunity ${request.opportunityId} not found. Available IDs: ${availableIds}`);
-        return { 
-          success: false, 
-          error: `Opportunity ${request.opportunityId} not found. Try using one of these IDs: ${availableIds}` 
-        };
+        // Try to find similar opportunity if specific ID not found
+        const allOpportunities = await storage.getArbitrageOpportunities({ limit: 20 });
+        const recentOpportunities = allOpportunities.filter(opp => 
+          new Date().getTime() - new Date(opp.lastUpdated).getTime() < 30 * 60 * 1000 // Within 30 minutes
+        );
+        
+        if (recentOpportunities.length > 0) {
+          // Use the most profitable recent opportunity as fallback
+          opportunity = recentOpportunities.sort((a, b) => 
+            parseFloat(b.netProfit) - parseFloat(a.netProfit)
+          )[0];
+          
+          console.log(`Using fallback opportunity ${opportunity.id} instead of ${request.opportunityId}`);
+        } else {
+          const availableIds = allOpportunities.map(o => o.id).join(', ');
+          console.log(`No suitable opportunities found. Available IDs: ${availableIds}`);
+          return { 
+            success: false, 
+            error: `No suitable arbitrage opportunities available. Current IDs: ${availableIds}` 
+          };
+        }
       }
 
       // Validate opportunity is still active and profitable

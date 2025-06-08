@@ -79,13 +79,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Clear stale opportunities
+  // Clear stale opportunities (protected from clearing recent ones)
   app.delete("/api/opportunities/stale", async (req, res) => {
     try {
       const { minutes } = req.query;
-      const olderThanMinutes = minutes ? parseInt(minutes as string) : 5;
+      const olderThanMinutes = Math.max(parseInt(minutes as string) || 30, 30); // Minimum 30 minutes
       const deletedCount = await storage.clearStaleOpportunities(olderThanMinutes);
-      res.json({ deletedCount });
+      res.json({ deletedCount, message: `Cleared ${deletedCount} opportunities older than ${olderThanMinutes} minutes` });
     } catch (error) {
       res.status(500).json({ message: "Failed to clear stale opportunities" });
     }
