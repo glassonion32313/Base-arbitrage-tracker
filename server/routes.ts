@@ -86,6 +86,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/emergency-withdraw', async (req, res) => {
+    try {
+      const token = req.headers.authorization?.replace('Bearer ', '');
+      if (!token) return res.status(401).json({ error: 'No token' });
+
+      const user = await authService.validateToken(token);
+      if (!user) return res.status(401).json({ error: 'Invalid token' });
+
+      const privateKey = await authService.getPrivateKey(user.id);
+      const { ethers } = await import('ethers');
+      const provider = new ethers.JsonRpcProvider(`https://base-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`);
+      
+      const fs = await import('fs');
+      const deployment = JSON.parse(fs.readFileSync('deployment.json', 'utf8'));
+      const contractABI = JSON.parse(fs.readFileSync('arbitragebot_abi.json', 'utf8'));
+      
+      const wallet = new ethers.Wallet(privateKey, provider);
+      const contract = new ethers.Contract(deployment.address, contractABI, wallet);
+      
+      const contractBalance = await provider.getBalance(deployment.address);
+      if (contractBalance === 0n) {
+        return res.json({ success: false, message: 'No ETH in contract', contractBalance: '0' });
+      }
+      
+      const tx = await contract.withdraw({
+        gasLimit: 50000,
+        gasPrice: ethers.parseUnits('0.01', 'gwei')
+      });
+      
+      await tx.wait();
+      
+      const finalWalletBalance = await provider.getBalance(wallet.address);
+      
+      res.json({
+        success: true,
+        txHash: tx.hash,
+        recovered: ethers.formatEther(contractBalance),
+        newWalletBalance: ethers.formatEther(finalWalletBalance),
+        basescan: `https://basescan.org/tx/${tx.hash}`
+      });
+      
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   app.post('/api/auth/private-key', async (req, res) => {
     try {
       const token = req.headers.authorization?.replace('Bearer ', '');

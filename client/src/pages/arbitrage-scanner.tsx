@@ -8,6 +8,7 @@ import MonitoringDashboard from "@/components/monitoring-dashboard";
 import NotificationCenter from "@/components/notification-center";
 import MEVProtection from "@/components/mev-protection";
 import AutoTrading from "@/components/auto-trading";
+import { EmergencyWithdrawal } from "@/components/emergency-withdrawal";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -344,7 +345,10 @@ export default function ArbitrageScanner() {
               </TabsContent>
 
               <TabsContent value="auto" className="space-y-6">
-                <AutoTrading />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <AutoTrading />
+                  <EmergencyWithdrawal />
+                </div>
               </TabsContent>
             </Tabs>
           </div>
