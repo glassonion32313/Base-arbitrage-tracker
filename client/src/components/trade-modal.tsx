@@ -35,12 +35,31 @@ export default function TradeModal({ opportunity, isOpen, onClose }: TradeModalP
 
   const executeTradeMutation = useMutation({
     mutationFn: async (tradeData: any) => {
-      return apiRequest("POST", "/api/transactions", tradeData);
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        throw new Error('Authentication required - please log in');
+      }
+      
+      const response = await fetch('/api/trades/execute', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(tradeData)
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Trade execution failed');
+      }
+      
+      return await response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
-        title: "Trade executed",
-        description: "Your arbitrage trade has been submitted to the blockchain",
+        title: "Trade Executed Successfully!",
+        description: `TX Hash: ${data.txHash?.slice(0, 10)}... | Profit: $${data.actualProfit || 'calculating'}`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/opportunities"] });
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
@@ -48,7 +67,7 @@ export default function TradeModal({ opportunity, isOpen, onClose }: TradeModalP
     },
     onError: (error: any) => {
       toast({
-        title: "Trade failed",
+        title: "Trade Failed",
         description: error.message || "Failed to execute arbitrage trade",
         variant: "destructive",
       });
@@ -57,89 +76,55 @@ export default function TradeModal({ opportunity, isOpen, onClose }: TradeModalP
 
   const handleExecuteTrade = async () => {
     try {
-      // Check if wallet is connected
-      if (typeof (window as any).ethereum === 'undefined') {
+      // Check if user is authenticated with stored private key
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
         toast({
-          title: "Wallet required",
-          description: "Please connect your wallet to execute trades",
+          title: "Authentication required",
+          description: "Please log in to execute trades",
           variant: "destructive",
         });
         return;
       }
 
-      const accounts = await (window as any).ethereum.request({ method: 'eth_accounts' });
-      if (accounts.length === 0) {
-        toast({
-          title: "Wallet not connected",
-          description: "Please connect your wallet first",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Get contract info and gas prices for real execution
-      const [contractResponse, gasResponse] = await Promise.all([
-        fetch('/api/contract/address'),
-        fetch('/api/contract/gas')
-      ]);
-      
-      const contractInfo = await contractResponse.json();
-      const gasPrices = await gasResponse.json();
-
-      // Estimate profit using deployed ArbitrageBot contract
-      const estimateResponse = await fetch('/api/contract/estimate', {
+      // Execute trade using stored private key via backend API
+      const response = await fetch('/api/trades/execute', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
-          tokenA: opportunity.tokenA,
-          tokenB: opportunity.tokenB,
-          amountIn: amount,
-          buyDex: opportunity.buyDex,
-          sellDex: opportunity.sellDex,
-          minProfit: "10"
+          opportunityId: opportunity.id,
+          tradeAmount: amount,
+          maxSlippage: 2, // 2% default slippage
         })
       });
 
-      if (!estimateResponse.ok) {
-        throw new Error('Contract profit estimation failed');
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Trade execution failed');
       }
 
-      // Prepare transaction for ArbitrageBot contract execution
-      const txParams = {
-        to: contractInfo.address,
-        from: accounts[0],
-        value: '0x0', // No ETH needed for flashloan arbitrage
-        gas: '0x' + (300000).toString(16), // 300k gas limit
-        gasPrice: '0x' + Math.floor(parseFloat(gasPrices.fast) * 1e9).toString(16)
-      };
-
-      // Execute transaction via MetaMask
-      const txHash = await (window as any).ethereum.request({
-        method: 'eth_sendTransaction',
-        params: [txParams],
-      });
-
-      const tradeData = {
-        userAddress: accounts[0],
-        tokenPair: opportunity.tokenPair,
-        buyDex: opportunity.buyDex,
-        sellDex: opportunity.sellDex,
-        amountIn: amount,
-        expectedProfit: opportunity.netProfit,
-        gasCost: Math.floor(parseFloat(gasPrices.fast) * 300000).toString(),
-        flashloanAmount: useFlashloan ? amount : null,
-        flashloanFee: useFlashloan ? flashloanFee : null,
-        isFlashloan: useFlashloan,
-        txHash: txHash,
-        status: "pending",
-      };
-
-      executeTradeMutation.mutate(tradeData);
-    } catch (error) {
+      if (result.success) {
+        toast({
+          title: "Trade Executed Successfully!",
+          description: `Profit: $${result.actualProfit} | TX: ${result.txHash?.slice(0, 10)}...`,
+        });
+        
+        // Refresh opportunities and transactions
+        queryClient.invalidateQueries({ queryKey: ["/api/opportunities"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+        onClose();
+      } else {
+        throw new Error(result.message || 'Trade execution failed');
+      }
+    } catch (error: any) {
       console.error("Trade execution error:", error);
       toast({
         title: "Trade failed",
-        description: "An error occurred while executing the trade",
+        description: error.message || "An error occurred while executing the trade",
         variant: "destructive",
       });
     }
