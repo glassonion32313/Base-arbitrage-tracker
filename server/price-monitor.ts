@@ -752,17 +752,22 @@ export class PriceMonitor {
       try {
         // Calculate current gas costs in real-time
         const currentGasPrice = await this.getCurrentGasPrice();
-        const estimatedGasCost = parseFloat(opportunity.estimatedGas || '5');
+        const estimatedGasCost = parseFloat(opportunity.gasCost || '5');
+        
+        // Ensure we have valid numbers
+        const validGasCost = isNaN(estimatedGasCost) ? 5 : estimatedGasCost;
+        const validCurrentGas = isNaN(currentGasPrice) ? 5 : currentGasPrice;
+        const actualGasCost = Math.max(validGasCost, validCurrentGas);
         
         // Net profit after all costs
-        const netProfit = opportunity.profitUSD - estimatedGasCost;
+        const netProfit = parseFloat(opportunity.netProfit) - actualGasCost;
         
         // Auto-execute if profitable after gas
         if (netProfit > 0.25) { // Minimum $0.25 profit after all costs
           console.log(`💰 AUTO-EXECUTING: ${opportunity.tokenPair} - Net Profit: $${netProfit.toFixed(2)}`);
           console.log(`   Buy: ${opportunity.buyDex} @ $${opportunity.buyPrice}`);
           console.log(`   Sell: ${opportunity.sellDex} @ $${opportunity.sellPrice}`);
-          console.log(`   Gross Profit: $${opportunity.profitUSD.toFixed(2)}`);
+          console.log(`   Gross Profit: $${parseFloat(opportunity.estimatedProfit).toFixed(2)}`);
           console.log(`   Gas Cost: $${estimatedGasCost.toFixed(2)}`);
           console.log(`   Net Profit: $${netProfit.toFixed(2)}`);
           
@@ -788,7 +793,7 @@ export class PriceMonitor {
       
       // Prepare arbitrage parameters
       const [tokenA, tokenB] = opportunity.tokenPair.split('/');
-      const tradeAmount = Math.min(opportunity.maxTradeSize, 1000); // Cap at $1000 per auto-trade
+      const tradeAmount = Math.min(parseFloat(opportunity.liquidity || '1000'), 1000); // Cap at $1000 per auto-trade
       
       const arbitrageParams = {
         tokenA: tokenA,
@@ -796,7 +801,7 @@ export class PriceMonitor {
         amountIn: tradeAmount.toString(),
         buyDex: opportunity.buyDex,
         sellDex: opportunity.sellDex,
-        minProfit: (opportunity.profitUSD * 0.8).toString() // 20% slippage tolerance
+        minProfit: (parseFloat(opportunity.estimatedProfit) * 0.8).toString() // 20% slippage tolerance
       };
       
       console.log(`🚀 Executing arbitrage with params:`, arbitrageParams);
@@ -815,7 +820,7 @@ export class PriceMonitor {
   private async simulateArbitrageExecution(opportunity: InsertArbitrageOpportunity, params: any): Promise<void> {
     console.log(`✅ SIMULATED EXECUTION: ${opportunity.tokenPair}`);
     console.log(`   Amount: $${params.amountIn}`);
-    console.log(`   Expected Profit: $${opportunity.profitUSD.toFixed(2)}`);
+    console.log(`   Expected Profit: $${parseFloat(opportunity.estimatedProfit).toFixed(2)}`);
     console.log(`   Route: ${params.buyDex} → ${params.sellDex}`);
     
     // In a real implementation, this would:
