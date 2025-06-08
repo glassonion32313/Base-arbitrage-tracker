@@ -51,9 +51,8 @@ export class SimpleTransactionExecutor {
         throw new Error(`Insufficient balance. Need at least 0.001 ETH for gas fees.`);
       }
 
-      // Create a simple value transfer transaction to demonstrate real execution
-      const recipient = '0x742d35Cc6e4C4530d4B0B7c4C8E5e3b7f6e8e9f0'; // Demo recipient
-      const valueToSend = ethers.parseEther('0.0001'); // Send 0.0001 ETH
+      // DISABLED: No more wasteful ETH transfers
+      throw new Error('Simple transaction executor disabled - use contract arbitrage only');
 
       // Get current gas price
       const feeData = await this.provider.getFeeData();
