@@ -45,9 +45,12 @@ app.use((req, res, next) => {
 
       // Log all 400 errors with full details
       if (res.statusCode === 400) {
-        console.error(`400 ERROR: ${req.method} ${path} - Body:`, req.body);
-        console.error(`400 ERROR Headers:`, req.headers);
-        console.error(`400 ERROR Response:`, capturedJsonResponse);
+        console.error(`\n=== 400 ERROR DETECTED ===`);
+        console.error(`${req.method} ${path}`);
+        console.error(`Request Body:`, JSON.stringify(req.body, null, 2));
+        console.error(`Request Headers:`, JSON.stringify(req.headers, null, 2));
+        console.error(`Response:`, JSON.stringify(capturedJsonResponse, null, 2));
+        console.error(`=== END 400 ERROR ===\n`);
       }
 
       if (logLine.length > 80) {
