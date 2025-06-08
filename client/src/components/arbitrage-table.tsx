@@ -2,8 +2,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowUpDown, ExternalLink } from "lucide-react";
+import { ArrowUpDown, ExternalLink, Trash2 } from "lucide-react";
 import TradeModal from "./trade-modal";
+import { useToast } from "@/hooks/use-toast";
 import type { ArbitrageOpportunity } from "@shared/schema";
 
 interface ArbitrageTableProps {
@@ -16,6 +17,8 @@ export default function ArbitrageTable({ opportunities, isLoading, onRefresh }: 
   const [selectedOpportunity, setSelectedOpportunity] = useState<ArbitrageOpportunity | null>(null);
   const [sortField, setSortField] = useState<keyof ArbitrageOpportunity>("estimatedProfit");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [isClearing, setIsClearing] = useState(false);
+  const { toast } = useToast();
 
   const handleSort = (field: keyof ArbitrageOpportunity) => {
     if (sortField === field) {
@@ -53,6 +56,58 @@ export default function ArbitrageTable({ opportunities, isLoading, onRefresh }: 
     return "Low";
   };
 
+  const handleClearStale = async () => {
+    setIsClearing(true);
+    try {
+      const response = await fetch('/api/opportunities/stale?minutes=2', {
+        method: 'DELETE'
+      });
+      const result = await response.json();
+      
+      toast({
+        title: "Stale Opportunities Cleared",
+        description: result.message,
+        variant: "default"
+      });
+      
+      onRefresh();
+    } catch (error) {
+      toast({
+        title: "Clear Failed",
+        description: "Failed to clear stale opportunities",
+        variant: "destructive"
+      });
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
+  const handleClearAll = async () => {
+    setIsClearing(true);
+    try {
+      const response = await fetch('/api/opportunities/all', {
+        method: 'DELETE'
+      });
+      const result = await response.json();
+      
+      toast({
+        title: "All Opportunities Cleared",
+        description: result.message,
+        variant: "default"
+      });
+      
+      onRefresh();
+    } catch (error) {
+      toast({
+        title: "Clear Failed",
+        description: "Failed to clear all opportunities",
+        variant: "destructive"
+      });
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="bg-dark-secondary rounded-xl border border-slate-700 overflow-hidden">
@@ -83,9 +138,31 @@ export default function ArbitrageTable({ opportunities, isLoading, onRefresh }: 
       <div className="bg-dark-secondary rounded-xl border border-slate-700 overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">Arbitrage Opportunities</h2>
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-slate-400">Last updated:</span>
-            <span className="text-sm text-profit-green font-medium">Now</span>
+          <div className="flex items-center space-x-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleClearStale}
+              disabled={isClearing}
+              className="text-xs"
+            >
+              <Trash2 className="w-3 h-3 mr-1" />
+              Clear Stale
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleClearAll}
+              disabled={isClearing}
+              className="text-xs"
+            >
+              <Trash2 className="w-3 h-3 mr-1" />
+              Clear All
+            </Button>
+            <div className="flex items-center space-x-2 ml-4">
+              <span className="text-sm text-slate-400">Last updated:</span>
+              <span className="text-sm text-profit-green font-medium">Now</span>
+            </div>
           </div>
         </div>
 
