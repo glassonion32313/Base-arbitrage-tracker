@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import RealWalletConnect from "@/components/real-wallet-connect";
-import DemoWalletConnect from "@/components/demo-wallet-connect";
+import SimpleAuthHeader from "@/components/simple-auth-header";
 import ArbitrageTable from "@/components/arbitrage-table";
 import StatsCards from "@/components/stats-cards";
 import FiltersSidebar from "@/components/filters-sidebar";
@@ -124,11 +123,8 @@ export default function ArbitrageScanner() {
                 <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
               </Button>
 
-              {/* Wallet Connection */}
-              <div className="flex gap-3">
-                <RealWalletConnect />
-                <DemoWalletConnect />
-              </div>
+              {/* User Authentication */}
+              <SimpleAuthHeader />
             </div>
           </div>
         </div>
