@@ -81,9 +81,6 @@ export class PriceMonitor {
     try {
       console.log("Scanning for arbitrage opportunities...");
       
-      // Clear stale opportunities but preserve recent ones for execution
-      await storage.clearStaleOpportunities(0.75); // Clear opportunities older than 45 seconds
-      
       // Fetch prices from all sources including enhanced on-chain prices
       const allPrices: TokenPrice[] = [];
       
@@ -148,10 +145,10 @@ export class PriceMonitor {
         }
       }
       
-      // Only clear very old opportunities (older than 30 minutes)
+      // Only clear very old opportunities (older than 5 minutes) with delay
       setTimeout(async () => {
-        await storage.clearStaleOpportunities(30.0);
-      }, 5000); // Delay cleanup by 5 seconds to ensure API calls can retrieve data
+        await storage.clearStaleOpportunities(5.0);
+      }, 30000); // Delay cleanup by 30 seconds to ensure API calls can retrieve data
 
       console.log(`Found ${opportunities.length} arbitrage opportunities`);
       

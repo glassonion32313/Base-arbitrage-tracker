@@ -368,6 +368,7 @@ export class DatabaseStorage implements IStorage {
     try {
       // Use the provided timeout value directly
       const cutoff = new Date(Date.now() - olderThanMinutes * 60 * 1000);
+      console.log(`Cleanup cutoff time: ${cutoff.toISOString()}, checking for opportunities older than ${olderThanMinutes} minutes`);
       
       const staleOpportunities = await db
         .select()
@@ -379,7 +380,13 @@ export class DatabaseStorage implements IStorage {
           )
         );
       
+      // Log timestamps for debugging
       if (staleOpportunities.length > 0) {
+        console.log(`Found ${staleOpportunities.length} stale opportunities:`);
+        staleOpportunities.forEach((op, idx) => {
+          console.log(`  ${idx + 1}. ${op.tokenPair} - lastUpdated: ${op.lastUpdated?.toISOString()}`);
+        });
+        
         await db
           .delete(arbitrageOpportunities)
           .where(
@@ -389,7 +396,9 @@ export class DatabaseStorage implements IStorage {
             )
           );
         
-        console.log(`Cleared ${staleOpportunities.length} opportunities older than ${olderThanMinutes < 1 ? Math.round(olderThanMinutes * 60) + ' seconds' : olderThanMinutes + ' minutes'}`);
+        console.log(`Cleared ${staleOpportunities.length} opportunities older than ${olderThanMinutes} minutes`);
+      } else {
+        console.log(`No stale opportunities found (cutoff: ${cutoff.toISOString()})`);
       }
       
       return staleOpportunities.length;
