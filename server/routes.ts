@@ -398,22 +398,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Protected trade execution
+  // Enhanced trade execution with validation
   app.post("/api/trades/execute", requireAuth, async (req: any, res) => {
     try {
-      const { opportunityId, tradeAmount } = req.body;
+      const { opportunityId, tradeAmount, maxSlippage, gasPrice } = req.body;
       
-      // Get user's private key for trade execution
-      const privateKey = await authService.getPrivateKey(req.user.id);
+      if (!opportunityId || !tradeAmount) {
+        return res.status(400).json({ message: 'Opportunity ID and trade amount are required' });
+      }
+
+      const tradeRequest = {
+        userId: req.user.id,
+        opportunityId: parseInt(opportunityId),
+        tradeAmount: tradeAmount.toString(),
+        maxSlippage: maxSlippage || 2, // Default 2% slippage
+        gasPrice
+      };
+
+      // Validate trade before execution
+      const validation = await tradeExecutor.validateTrade(tradeRequest);
+      if (!validation.valid) {
+        return res.status(400).json({ message: validation.error });
+      }
+
+      // Execute the trade
+      const result = await tradeExecutor.executeTrade(tradeRequest);
       
-      res.json({ 
-        message: 'Trade execution initiated',
-        opportunityId,
-        tradeAmount,
-        userWallet: req.user.walletAddress
-      });
+      if (result.success) {
+        res.json({
+          success: true,
+          txHash: result.txHash,
+          actualProfit: result.actualProfit,
+          gasUsed: result.gasUsed,
+          message: 'Trade executed successfully'
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          message: result.error || 'Trade execution failed'
+        });
+      }
     } catch (error: any) {
-      res.status(400).json({ message: error.message });
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get user wallet balance
+  app.get("/api/wallet/balance", requireAuth, async (req: any, res) => {
+    try {
+      const balance = await tradeExecutor.getWalletBalance(req.user.id);
+      res.json(balance);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Validate trade before execution
+  app.post("/api/trades/validate", requireAuth, async (req: any, res) => {
+    try {
+      const { opportunityId, tradeAmount, maxSlippage } = req.body;
+      
+      const tradeRequest = {
+        userId: req.user.id,
+        opportunityId: parseInt(opportunityId),
+        tradeAmount: tradeAmount.toString(),
+        maxSlippage: maxSlippage || 2
+      };
+
+      const validation = await tradeExecutor.validateTrade(tradeRequest);
+      res.json(validation);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
   });
 
