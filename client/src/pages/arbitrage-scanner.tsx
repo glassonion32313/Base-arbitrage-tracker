@@ -25,7 +25,7 @@ export default function ArbitrageScanner() {
   const { toast } = useToast();
 
   // WebSocket connection for real-time opportunities
-  const { opportunities: wsOpportunities, newOpportunityCount, isConnected } = useWebSocketOpportunities();
+  const { opportunities: wsOpportunities, newOpportunityCount, isConnected, lastMessage } = useWebSocketOpportunities();
 
   // Use WebSocket data when available, fallback to HTTP for initial load
   const { data: httpOpportunities = [], isLoading, refetch } = useQuery<any[]>({
@@ -34,10 +34,30 @@ export default function ArbitrageScanner() {
     refetchInterval: false, // Disable polling in favor of WebSocket
   });
 
-  const { data: stats } = useQuery<any>({
+  // Use WebSocket for real-time stats updates
+  const [stats, setStats] = useState<any>(null);
+  
+  const { data: initialStats } = useQuery<any>({
     queryKey: ["/api/stats"],
-    refetchInterval: autoRefresh ? 60000 : false, // Reduce frequency
+    enabled: !isConnected, // Only fetch initially when WebSocket not connected
+    refetchInterval: false, // Disable polling
   });
+
+  // Listen for WebSocket stats updates
+  useEffect(() => {
+    if (lastMessage) {
+      if (lastMessage.type === 'stats_updated' && lastMessage.data) {
+        setStats(lastMessage.data);
+      }
+    }
+  }, [lastMessage]);
+
+  // Use initial stats if WebSocket stats not available
+  useEffect(() => {
+    if (initialStats && !stats) {
+      setStats(initialStats);
+    }
+  }, [initialStats, stats]);
 
   // Combine WebSocket and HTTP data
   const opportunities = isConnected && wsOpportunities.length > 0 ? wsOpportunities : httpOpportunities;

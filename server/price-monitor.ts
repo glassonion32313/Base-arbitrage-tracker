@@ -131,14 +131,33 @@ export class PriceMonitor {
 
       console.log(`Found ${opportunities.length} arbitrage opportunities`);
       
-      // Broadcast opportunities summary update
+      // Broadcast opportunities summary update with stats
       const broadcastToClients = (global as any).broadcastToClients;
       if (broadcastToClients) {
+        // Get updated stats
+        const stats = await storage.getStats();
+        
         broadcastToClients({
           type: 'opportunities_updated',
           count: opportunities.length,
           timestamp: new Date()
         });
+        
+        // Broadcast updated stats
+        broadcastToClients({
+          type: 'stats_updated',
+          data: stats,
+          timestamp: new Date()
+        });
+        
+        // Broadcast price update notification
+        if (opportunities.length > 0) {
+          broadcastToClients({
+            type: 'price_update',
+            message: `${opportunities.length} new arbitrage opportunities detected`,
+            timestamp: new Date()
+          });
+        }
       }
       
     } catch (error) {

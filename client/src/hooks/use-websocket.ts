@@ -146,6 +146,7 @@ export function useWebSocketOpportunities() {
     opportunities,
     newOpportunityCount,
     isConnected,
+    lastMessage,
     clearNewCount: () => setNewOpportunityCount(0)
   };
 }
