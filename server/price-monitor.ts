@@ -19,8 +19,11 @@ export class PriceMonitor {
   private sources: PriceSource[] = [];
   private monitoring = false;
   private interval: NodeJS.Timeout | null = null;
-  private readonly UPDATE_INTERVAL = 30000; // 30 seconds
+  private readonly UPDATE_INTERVAL = 120000; // 2 minutes to avoid rate limits
   private readonly MIN_PROFIT_THRESHOLD = 5; // Minimum $5 profit
+  private priceCache: any = null;
+  private lastApiCall = 0;
+  private readonly CACHE_DURATION = 60000; // 1 minute cache
 
   constructor() {
     this.initializePriceSources();
@@ -236,106 +239,108 @@ export class PriceMonitor {
   }
 
   // Simulated price fetchers (in production, these would call real APIs)
-  private async fetchUniswapPrices(): Promise<TokenPrice[]> {
+  private async fetchCachedPrices(): Promise<any> {
+    const now = Date.now();
+    
+    // Return cached data if still fresh
+    if (this.priceCache && (now - this.lastApiCall) < this.CACHE_DURATION) {
+      return this.priceCache;
+    }
+    
     try {
       const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum,bitcoin,chainlink,uniswap&vs_currencies=usd');
-      if (!response.ok) throw new Error(`CoinGecko API error: ${response.status}`);
+      if (!response.ok) {
+        console.log(`CoinGecko API rate limited (${response.status}), using cached data`);
+        return this.priceCache || {};
+      }
       
       const data = await response.json();
-      const prices: TokenPrice[] = [];
+      this.priceCache = data;
+      this.lastApiCall = now;
       
-      const tokens = [
-        { symbol: 'WETH', coinId: 'ethereum' },
-        { symbol: 'WBTC', coinId: 'bitcoin' },
-        { symbol: 'LINK', coinId: 'chainlink' },
-        { symbol: 'UNI', coinId: 'uniswap' }
-      ];
-      
-      tokens.forEach(token => {
-        if (data[token.coinId]) {
-          prices.push({
-            symbol: `${token.symbol}/USDC`,
-            address: this.getTokenAddress(token.symbol),
-            price: data[token.coinId].usd * (0.9995 + Math.random() * 0.001),
-            dex: "Uniswap V3",
-            timestamp: new Date()
-          });
-        }
-      });
-      
-      return prices;
+      return data;
     } catch (error) {
-      console.error('Failed to fetch Uniswap prices:', error);
-      return [];
+      console.error('Failed to fetch prices from CoinGecko:', error);
+      return this.priceCache || {};
     }
+  }
+
+  private async fetchUniswapPrices(): Promise<TokenPrice[]> {
+    const data = await this.fetchCachedPrices();
+    const prices: TokenPrice[] = [];
+    
+    const tokens = [
+      { symbol: 'WETH', coinId: 'ethereum' },
+      { symbol: 'WBTC', coinId: 'bitcoin' },
+      { symbol: 'LINK', coinId: 'chainlink' },
+      { symbol: 'UNI', coinId: 'uniswap' }
+    ];
+    
+    tokens.forEach(token => {
+      if (data[token.coinId]) {
+        prices.push({
+          symbol: `${token.symbol}/USDC`,
+          address: this.getTokenAddress(token.symbol),
+          price: data[token.coinId].usd * (0.9995 + Math.random() * 0.001),
+          dex: "Uniswap V3",
+          timestamp: new Date()
+        });
+      }
+    });
+    
+    return prices;
   }
 
   private async fetchSushiSwapPrices(): Promise<TokenPrice[]> {
-    try {
-      const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum,bitcoin,chainlink,uniswap&vs_currencies=usd');
-      if (!response.ok) throw new Error(`CoinGecko API error: ${response.status}`);
-      
-      const data = await response.json();
-      const prices: TokenPrice[] = [];
-      
-      const tokens = [
-        { symbol: 'WETH', coinId: 'ethereum' },
-        { symbol: 'WBTC', coinId: 'bitcoin' },
-        { symbol: 'LINK', coinId: 'chainlink' },
-        { symbol: 'UNI', coinId: 'uniswap' }
-      ];
-      
-      tokens.forEach(token => {
-        if (data[token.coinId]) {
-          prices.push({
-            symbol: `${token.symbol}/USDC`,
-            address: this.getTokenAddress(token.symbol),
-            price: data[token.coinId].usd * (0.998 + Math.random() * 0.004),
-            dex: "SushiSwap",
-            timestamp: new Date()
-          });
-        }
-      });
-      
-      return prices;
-    } catch (error) {
-      console.error('Failed to fetch SushiSwap prices:', error);
-      return [];
-    }
+    const data = await this.fetchCachedPrices();
+    const prices: TokenPrice[] = [];
+    
+    const tokens = [
+      { symbol: 'WETH', coinId: 'ethereum' },
+      { symbol: 'WBTC', coinId: 'bitcoin' },
+      { symbol: 'LINK', coinId: 'chainlink' },
+      { symbol: 'UNI', coinId: 'uniswap' }
+    ];
+    
+    tokens.forEach(token => {
+      if (data[token.coinId]) {
+        prices.push({
+          symbol: `${token.symbol}/USDC`,
+          address: this.getTokenAddress(token.symbol),
+          price: data[token.coinId].usd * (0.998 + Math.random() * 0.004),
+          dex: "SushiSwap",
+          timestamp: new Date()
+        });
+      }
+    });
+    
+    return prices;
   }
 
   private async fetchBaseSwapPrices(): Promise<TokenPrice[]> {
-    try {
-      const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum,bitcoin,chainlink,uniswap&vs_currencies=usd');
-      if (!response.ok) throw new Error(`CoinGecko API error: ${response.status}`);
-      
-      const data = await response.json();
-      const prices: TokenPrice[] = [];
-      
-      const tokens = [
-        { symbol: 'WETH', coinId: 'ethereum' },
-        { symbol: 'WBTC', coinId: 'bitcoin' },
-        { symbol: 'LINK', coinId: 'chainlink' },
-        { symbol: 'UNI', coinId: 'uniswap' }
-      ];
-      
-      tokens.forEach(token => {
-        if (data[token.coinId]) {
-          prices.push({
-            symbol: `${token.symbol}/USDC`,
-            address: this.getTokenAddress(token.symbol),
-            price: data[token.coinId].usd * (0.996 + Math.random() * 0.008),
-            dex: "BaseSwap",
-            timestamp: new Date()
-          });
-        }
-      });
-      
-      return prices;
-    } catch (error) {
-      console.error('Failed to fetch BaseSwap prices:', error);
-      return [];
-    }
+    const data = await this.fetchCachedPrices();
+    const prices: TokenPrice[] = [];
+    
+    const tokens = [
+      { symbol: 'WETH', coinId: 'ethereum' },
+      { symbol: 'WBTC', coinId: 'bitcoin' },
+      { symbol: 'LINK', coinId: 'chainlink' },
+      { symbol: 'UNI', coinId: 'uniswap' }
+    ];
+    
+    tokens.forEach(token => {
+      if (data[token.coinId]) {
+        prices.push({
+          symbol: `${token.symbol}/USDC`,
+          address: this.getTokenAddress(token.symbol),
+          price: data[token.coinId].usd * (0.996 + Math.random() * 0.008),
+          dex: "BaseSwap",
+          timestamp: new Date()
+        });
+      }
+    });
+    
+    return prices;
   }
 
   isMonitoring(): boolean {
