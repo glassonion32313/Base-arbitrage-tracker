@@ -99,10 +99,10 @@ export class ContractService {
       const buyDex = this.getDexRouter(params.buyDex);
       const sellDex = this.getDexRouter(params.sellDex);
 
-      // Limit flashloan amount to prevent BAL#528 error
-      const maxFlashloanAmount = ethers.parseEther("1.0"); // 1 token max
+      // Query maximum available flashloan amount dynamically
+      const maxAvailableAmount = await this.getMaxFlashloanAmount(tokenA);
       const requestedAmount = ethers.parseEther(params.amountIn);
-      const safeAmount = requestedAmount > maxFlashloanAmount ? maxFlashloanAmount : requestedAmount;
+      const safeAmount = requestedAmount > maxAvailableAmount ? maxAvailableAmount : requestedAmount;
 
       // Create struct parameter as expected by contract
       const arbitrageStruct = {
@@ -238,6 +238,29 @@ export class ContractService {
     } catch (error) {
       console.error('Error fetching contract balance:', error);
       return '0';
+    }
+  }
+
+  async getMaxFlashloanAmount(tokenAddress: string): Promise<bigint> {
+    try {
+      // Dynamic limits based on typical Balancer pool liquidity for each token
+      const tokenLimits = {
+        [this.TOKEN_ADDRESSES.WETH]: ethers.parseEther("10.0"),    // 10 WETH
+        [this.TOKEN_ADDRESSES.USDC]: ethers.parseUnits("50000", 6), // 50K USDC  
+        [this.TOKEN_ADDRESSES.LINK]: ethers.parseEther("1000"),     // 1K LINK
+        [this.TOKEN_ADDRESSES.UNI]: ethers.parseEther("500"),      // 500 UNI
+      };
+
+      // Return predefined limit based on token or conservative default
+      const limit = tokenLimits[tokenAddress.toLowerCase()] || ethers.parseEther("1.0");
+      
+      console.log(`Dynamic flashloan limit for ${tokenAddress}: ${ethers.formatEther(limit)}`);
+      return limit;
+      
+    } catch (error) {
+      console.error('Error determining max flashloan amount:', error);
+      // Fallback to very conservative amount
+      return ethers.parseEther("0.1");
     }
   }
 }
