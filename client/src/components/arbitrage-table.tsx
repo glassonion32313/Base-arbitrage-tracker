@@ -60,18 +60,18 @@ export default function ArbitrageTable({ opportunities, isLoading, onRefresh }: 
     return "Low";
   };
 
-  // Auto-execute arbitrage mutation
+  // Auto-execute arbitrage mutation - REAL BLOCKCHAIN TRANSACTIONS
   const executeArbitrageMutation = useMutation({
-    mutationFn: async ({ opportunityId, useFlashloan }: { opportunityId: number; useFlashloan: boolean }) => {
+    mutationFn: async ({ opportunityId, useFlashloan, privateKey }: { opportunityId: number; useFlashloan: boolean; privateKey: string }) => {
       return await apiRequest(`/api/arbitrage/execute-auto`, {
         method: 'POST',
-        body: { opportunityId, useFlashloan }
+        body: { opportunityId, useFlashloan, privateKey }
       });
     },
     onSuccess: (data, { opportunityId }) => {
       toast({
-        title: "Trade Executed",
-        description: `Arbitrage trade executed successfully with ${data.flashloanAmount ? 'flashloan' : 'wallet balance'}`,
+        title: "Real Blockchain Transaction Submitted",
+        description: `Transaction Hash: ${data.txHash}. View on BaseScan: ${data.explorerUrl}`,
       });
       setExecutingOpportunities(prev => {
         const next = new Set(prev);
@@ -96,10 +96,35 @@ export default function ArbitrageTable({ opportunities, isLoading, onRefresh }: 
   });
 
   const handleExecuteArbitrage = async (opportunity: ArbitrageOpportunity) => {
+    // Prompt for private key for real blockchain transaction
+    const privateKey = prompt(
+      `⚠️ REAL BLOCKCHAIN TRANSACTION\n\nThis will execute an actual arbitrage transaction on Base network.\n\nOpportunity: ${opportunity.tokenPair}\nProfit: $${opportunity.estimatedProfit}\nBuy: ${opportunity.buyDex} → Sell: ${opportunity.sellDex}\n\nEnter your private key (starts with 0x):`,
+      ""
+    );
+
+    if (!privateKey) {
+      toast({
+        title: "Transaction Cancelled",
+        description: "Private key required for blockchain execution",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!privateKey.startsWith('0x') || privateKey.length !== 66) {
+      toast({
+        title: "Invalid Private Key",
+        description: "Private key must start with 0x and be 64 characters long",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setExecutingOpportunities(prev => new Set(prev).add(opportunity.id));
     executeArbitrageMutation.mutate({
       opportunityId: opportunity.id,
-      useFlashloan: flashloanEnabled
+      useFlashloan: flashloanEnabled,
+      privateKey
     });
   };
 
