@@ -35,17 +35,13 @@ export class TradeExecutor {
       const privateKey = await authService.getPrivateKey(request.userId);
       const wallet = new ethers.Wallet(privateKey, this.provider);
 
-      // Get arbitrage opportunity details
-      const opportunities = await storage.getArbitrageOpportunities({ 
-        limit: 1, 
-        offset: request.opportunityId - 1 
-      });
+      // Get arbitrage opportunity details by ID
+      const allOpportunities = await storage.getArbitrageOpportunities();
+      const opportunity = allOpportunities.find(opp => opp.id === request.opportunityId);
       
-      if (opportunities.length === 0) {
+      if (!opportunity) {
         return { success: false, error: 'Opportunity not found' };
       }
-
-      const opportunity = opportunities[0];
 
       // Validate opportunity is still active and profitable
       if (!opportunity.isActive) {
