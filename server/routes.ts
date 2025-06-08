@@ -164,16 +164,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Additional safety checks for live trading
-      const profitValue = parseFloat(opportunity.estimatedProfit);
-      if (profitValue < 5) {
-        return res.status(400).json({
-          error: 'Minimum profit threshold not met for live trading',
-          details: 'Live trades require at least $5 estimated profit to cover gas fees',
-          currentProfit: profitValue
-        });
-      }
-
       // Get user's private key from secure storage
       const privateKey = await authService.getPrivateKey(user.id);
       
@@ -195,6 +185,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         console.log(`Original opportunity ${opportunityId} not found, using similar opportunity ${opportunity.id}`);
+      }
+
+      // Additional safety checks for live trading
+      const profitValue = parseFloat(opportunity.estimatedProfit);
+      if (profitValue < 5) {
+        return res.status(400).json({
+          error: 'Minimum profit threshold not met for live trading',
+          details: 'Live trades require at least $5 estimated profit to cover gas fees',
+          currentProfit: profitValue
+        });
       }
 
       // Calculate realistic flashloan amount based on opportunity
