@@ -138,10 +138,10 @@ export class AlchemyService {
     const estimatedProfit = await contract.estimateProfit([
       params.tokenA,
       params.tokenB,
-      ethers.utils.parseEther(params.amountIn),
+      parseEther(params.amountIn),
       params.buyDex,
       params.sellDex,
-      ethers.utils.parseEther(params.minProfit)
+      parseEther(params.minProfit)
     ]);
     
     if (estimatedProfit.gt(ethers.utils.parseEther(params.minProfit))) {

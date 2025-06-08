@@ -49,6 +49,8 @@ export function useWebSocket(): UseWebSocketReturn {
           setLastMessage(message);
         } catch (error) {
           console.error('Failed to parse WebSocket message:', error);
+          // Don't throw unhandled rejections
+          return;
         }
       };
 
@@ -70,6 +72,8 @@ export function useWebSocket(): UseWebSocketReturn {
       ws.current.onerror = (error) => {
         console.error('WebSocket error:', error);
         setConnectionStatus('error');
+        // Prevent unhandled promise rejections
+        setIsConnected(false);
       };
 
     } catch (error) {
