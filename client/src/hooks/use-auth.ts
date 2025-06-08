@@ -19,14 +19,15 @@ export function useAuth() {
   const { toast } = useToast();
 
   const { data: user, isLoading } = useQuery({
-    queryKey: ["/api/auth/user", token],
+    queryKey: ["/api/auth/user"],
     queryFn: async () => {
-      if (!token) return null;
+      const currentToken = token || localStorage.getItem('auth_token');
+      if (!currentToken) return null;
       
       try {
         const response = await fetch("/api/auth/user", {
           headers: {
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${currentToken}`
           }
         });
         
@@ -48,7 +49,6 @@ export function useAuth() {
         return null;
       }
     },
-    enabled: !!token,
     retry: false,
   });
 
@@ -75,14 +75,16 @@ export function useAuth() {
     }
   };
 
-  // Update token in localStorage when it changes
+  // Update token in localStorage when it changes and invalidate queries
   useEffect(() => {
     if (token) {
       localStorage.setItem('auth_token', token);
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
     } else {
       localStorage.removeItem('auth_token');
+      queryClient.clear();
     }
-  }, [token]);
+  }, [token, queryClient]);
 
   // Listen for successful login
   useEffect(() => {
