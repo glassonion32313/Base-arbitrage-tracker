@@ -55,28 +55,32 @@ export class ContractService {
     this.contract = new ethers.Contract(this.contractAddress, this.contractABI, this.provider);
   }
 
-  async estimateArbitrageProfit(params: ArbitrageParams): Promise<bigint> {
+  async estimateArbitrageProfit(params: ArbitrageParams): Promise<string> {
     try {
       const tokenA = this.getTokenAddress(params.tokenA);
       const tokenB = this.getTokenAddress(params.tokenB);
       const buyDex = this.getDexRouter(params.buyDex);
       const sellDex = this.getDexRouter(params.sellDex);
       
-      const arbitrageParams = [
+      const arbitrageParams = {
         tokenA,
         tokenB,
-        ethers.parseEther(params.amountIn),
+        amountIn: ethers.parseEther(params.amountIn),
         buyDex,
         sellDex,
-        ethers.parseEther(params.minProfit)
-      ];
+        minProfit: ethers.parseEther(params.minProfit)
+      };
 
       const estimatedProfit = await this.contract.estimateProfit(arbitrageParams);
-      return estimatedProfit;
+      return ethers.formatEther(estimatedProfit);
     } catch (error) {
       console.error('Error estimating arbitrage profit:', error);
-      return BigInt(0);
+      return '0';
     }
+  }
+
+  getContractAddress(): string {
+    return this.contractAddress;
   }
 
   async executeArbitrage(params: ArbitrageParams, privateKey: string): Promise<string> {
