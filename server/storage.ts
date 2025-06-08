@@ -68,6 +68,7 @@ export interface IStorage {
   // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  updateUserProfits(userId: string, profitAmount: number): Promise<User>;
 
   // Stats
   getStats(): Promise<{
@@ -885,6 +886,34 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return user;
+  }
+
+  async updateUserProfits(userId: string, profitAmount: number): Promise<User> {
+    // Get current user data
+    const currentUser = await this.getUser(userId);
+    if (!currentUser) {
+      throw new Error(`User ${userId} not found`);
+    }
+
+    // Calculate new totals
+    const currentProfit = parseFloat(currentUser.totalProfitUSD || '0');
+    const currentTrades = currentUser.totalTradesExecuted || 0;
+    const newTotalProfit = currentProfit + profitAmount;
+    const newTradeCount = currentTrades + 1;
+
+    // Update user with accumulated profits
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        totalProfitUSD: newTotalProfit.toString(),
+        totalTradesExecuted: newTradeCount,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+
+    console.log(`Updated user ${userId} profits: +$${profitAmount.toFixed(2)} (Total: $${newTotalProfit.toFixed(2)}, Trades: ${newTradeCount})`);
+    return updatedUser;
   }
 }
 

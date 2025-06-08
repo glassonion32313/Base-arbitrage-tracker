@@ -309,11 +309,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           sellDex: opportunity.sellDex,
           amountIn: flashloanAmount,
           expectedProfit: opportunity.estimatedProfit,
-          actualProfit: '0', // Will be updated when transaction confirms
-          gasCost: '0.002',
+          actualProfit: actualProfit.toString(),
+          gasCost: gasCostUSD.toString(),
           isFlashloan: useFlashloan,
-          status: 'pending'
+          status: 'confirmed'
         });
+
+        // Update user's total profits and trade count
+        const updatedUser = await storage.updateUserProfits(user.id, actualProfit);
 
         res.json({
           success: true,
@@ -340,6 +343,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             grossProfit: theoreticalProfit,
             gasCost: gasCostUSD,
             netProfit: actualProfit
+          },
+          userStats: {
+            totalProfitUSD: parseFloat(user.totalProfitUSD || '0') + actualProfit,
+            totalTrades: (user.totalTradesExecuted || 0) + 1
           }
         });
 

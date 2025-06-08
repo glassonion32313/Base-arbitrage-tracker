@@ -20,6 +20,9 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
+  walletAddress: varchar("wallet_address"),
+  totalProfitUSD: decimal("total_profit_usd", { precision: 12, scale: 2 }).default("0"),
+  totalTradesExecuted: integer("total_trades_executed").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
