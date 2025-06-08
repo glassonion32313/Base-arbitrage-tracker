@@ -19,7 +19,7 @@ export function useAuth() {
   const { toast } = useToast();
 
   const { data: user, isLoading } = useQuery({
-    queryKey: ["/api/auth/user"],
+    queryKey: ["/api/auth/user", token],
     queryFn: async () => {
       if (!token) return null;
       

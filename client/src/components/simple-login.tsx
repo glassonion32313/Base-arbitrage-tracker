@@ -36,15 +36,12 @@ export default function SimpleLogin({ onSuccess }: { onSuccess: () => void }) {
     },
     onSuccess: (response: any) => {
       if (response.token) {
-        localStorage.setItem('auth_token', response.token);
         setToken(response.token);
+        toast({
+          title: "Success",
+          description: "Successfully logged in",
+        });
       }
-      toast({
-        title: "Success",
-        description: "Successfully logged in",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      onSuccess();
     },
     onError: (error: any) => {
       toast({

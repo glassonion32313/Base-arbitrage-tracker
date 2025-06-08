@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import ArbitrageScanner from "@/pages/arbitrage-scanner";
+import AccountSettings from "@/pages/account-settings";
 import SimpleLogin from "@/components/simple-login";
 import NotFound from "@/pages/not-found";
 import { useAuth } from "@/hooks/use-auth";
@@ -23,7 +24,7 @@ function Router() {
   }
 
   if (!isAuthenticated) {
-    return <SimpleLogin onSuccess={() => window.location.reload()} />;
+    return <SimpleLogin onSuccess={() => {}} />;
   }
 
   return (
