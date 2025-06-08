@@ -334,9 +334,8 @@ export class DatabaseStorage implements IStorage {
 
   async clearStaleOpportunities(olderThanMinutes: number): Promise<number> {
     try {
-      // Use 45 seconds (0.75 minutes) for rapid opportunity refresh
-      const protectedMinutes = Math.max(olderThanMinutes, 0.75);
-      const cutoff = new Date(Date.now() - protectedMinutes * 60 * 1000);
+      // Use the provided timeout value directly
+      const cutoff = new Date(Date.now() - olderThanMinutes * 60 * 1000);
       
       const staleOpportunities = await db
         .select()
@@ -358,7 +357,7 @@ export class DatabaseStorage implements IStorage {
             )
           );
         
-        console.log(`Cleared ${staleOpportunities.length} opportunities older than ${protectedMinutes < 1 ? Math.round(protectedMinutes * 60) + ' seconds' : protectedMinutes + ' minutes'}`);
+        console.log(`Cleared ${staleOpportunities.length} opportunities older than ${olderThanMinutes < 1 ? Math.round(olderThanMinutes * 60) + ' seconds' : olderThanMinutes + ' minutes'}`);
       }
       
       return staleOpportunities.length;

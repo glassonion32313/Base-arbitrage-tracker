@@ -51,6 +51,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get arbitrage opportunities with optional filters
   app.get("/api/opportunities", async (req, res) => {
     try {
+      // Disable caching for real-time data
+      res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
+
       const { minProfit, isActive, limit, offset } = req.query;
       
       const filters = {
@@ -61,6 +68,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const opportunities = await storage.getArbitrageOpportunities(filters);
+      console.log(`API returning ${opportunities.length} opportunities`);
       res.json(opportunities);
     } catch (error) {
       console.error('Error fetching opportunities:', error);
