@@ -141,7 +141,7 @@ export function useWallet() {
     updateWalletState();
 
     return () => {
-      if (window.ethereum.removeListener) {
+      if (window.ethereum?.removeListener) {
         window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
         window.ethereum.removeListener('chainChanged', handleChainChanged);
         window.ethereum.removeListener('connect', handleConnect);

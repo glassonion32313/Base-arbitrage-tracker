@@ -144,15 +144,15 @@ export class AlchemyService {
       parseEther(params.minProfit)
     ]);
     
-    if (estimatedProfit.gt(ethers.utils.parseEther(params.minProfit))) {
+    if (estimatedProfit > parseEther(params.minProfit)) {
       // Execute the arbitrage (requires signer with gas)
       const tx = await contract.executeArbitrage([
         params.tokenA,
         params.tokenB,
-        ethers.utils.parseEther(params.amountIn),
+        parseEther(params.amountIn),
         params.buyDex,
         params.sellDex,
-        ethers.utils.parseEther(params.minProfit)
+        parseEther(params.minProfit)
       ]);
       
       return tx.hash;
@@ -165,11 +165,12 @@ export class AlchemyService {
     this.priceListeners.push(callback);
   }
 
-  async getGasPrice(): Promise<ethers.BigNumber> {
-    return this.provider.getGasPrice();
+  async getGasPrice(): Promise<bigint> {
+    const feeData = await this.provider.getFeeData();
+    return feeData.gasPrice || BigInt(0);
   }
 
-  async estimateGas(to: string, data: string): Promise<ethers.BigNumber> {
+  async estimateGas(to: string, data: string): Promise<bigint> {
     return this.provider.estimateGas({ to, data });
   }
 

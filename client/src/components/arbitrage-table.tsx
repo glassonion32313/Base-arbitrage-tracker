@@ -65,7 +65,10 @@ export default function ArbitrageTable({ opportunities, isLoading, onRefresh }: 
     mutationFn: async ({ opportunityId, useFlashloan, privateKey }: { opportunityId: number; useFlashloan: boolean; privateKey: string }) => {
       return await apiRequest(`/api/arbitrage/execute-auto`, {
         method: 'POST',
-        body: { opportunityId, useFlashloan, privateKey }
+        body: JSON.stringify({ opportunityId, useFlashloan, privateKey }),
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
     },
     onSuccess: (data, { opportunityId }) => {

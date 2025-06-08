@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { User, Wallet, Eye, EyeOff, Copy, Shield } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
+import { User, Wallet, Eye, EyeOff, Copy, Shield, LogOut } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 
 export default function AccountManager() {
