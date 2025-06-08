@@ -189,10 +189,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Additional safety checks for live trading
       const profitValue = parseFloat(opportunity.estimatedProfit);
-      if (profitValue < 5) {
+      if (profitValue < 2) {
         return res.status(400).json({
           error: 'Minimum profit threshold not met for live trading',
-          details: 'Live trades require at least $5 estimated profit to cover gas fees',
+          details: 'Live trades require at least $2 estimated profit to cover gas fees',
           currentProfit: profitValue
         });
       }

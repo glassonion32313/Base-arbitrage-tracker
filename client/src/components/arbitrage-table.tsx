@@ -111,6 +111,12 @@ export default function ArbitrageTable({ opportunities, isLoading, onRefresh }: 
           description: "This opportunity is no longer available. New ones are detected every few seconds.",
           variant: "default",
         });
+      } else if (errorMessage.includes("Minimum profit threshold")) {
+        toast({
+          title: "Profit Too Low",
+          description: "This opportunity doesn't meet the $2 minimum profit requirement for live trading.",
+          variant: "default",
+        });
       } else {
         toast({
           title: "Execution Failed",
