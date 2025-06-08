@@ -30,15 +30,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Set up Replit Auth middleware
   await setupAuth(app);
 
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  // Database-based Auth routes
+  app.post('/api/auth/login', async (req, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const { username, password } = req.body;
+      const result = await authService.login({ username, password });
+      res.json(result);
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(401).json({ message: "Invalid credentials" });
+    }
+  });
+
+  app.post('/api/auth/register', async (req, res) => {
+    try {
+      const { username, email, password } = req.body;
+      const result = await authService.register({ username, email, password });
+      res.json(result);
+    } catch (error) {
+      console.error("Registration error:", error);
+      res.status(400).json({ message: "Registration failed" });
+    }
+  });
+
+  app.get('/api/auth/user', async (req, res) => {
+    try {
+      const token = req.headers.authorization?.replace('Bearer ', '');
+      if (!token) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+      
+      const user = await authService.validateToken(token);
+      if (!user) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+      
       res.json(user);
     } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
+      console.error("Auth validation error:", error);
+      res.status(401).json({ message: "Unauthorized" });
+    }
+  });
+
+  app.post('/api/auth/logout', async (req, res) => {
+    try {
+      const token = req.headers.authorization?.replace('Bearer ', '');
+      if (token) {
+        await authService.logout(token);
+      }
+      res.json({ message: "Logged out successfully" });
+    } catch (error) {
+      console.error("Logout error:", error);
+      res.status(500).json({ message: "Logout failed" });
     }
   });
 

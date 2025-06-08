@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 
 interface LoginData {
   username: string;
@@ -24,6 +25,7 @@ export default function SimpleLogin({ onSuccess }: { onSuccess: () => void }) {
   const [registerData, setRegisterData] = useState<RegisterData>({ username: "", email: "", password: "" });
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { setToken } = useAuth();
 
   const loginMutation = useMutation({
     mutationFn: async (data: LoginData) => {
@@ -32,7 +34,11 @@ export default function SimpleLogin({ onSuccess }: { onSuccess: () => void }) {
         body: JSON.stringify(data),
       });
     },
-    onSuccess: () => {
+    onSuccess: (response: any) => {
+      if (response.token) {
+        localStorage.setItem('auth_token', response.token);
+        setToken(response.token);
+      }
       toast({
         title: "Success",
         description: "Successfully logged in",
