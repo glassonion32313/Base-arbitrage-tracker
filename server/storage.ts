@@ -214,13 +214,17 @@ export class DatabaseStorage implements IStorage {
     offset?: number;
   }): Promise<ArbitrageOpportunity[]> {
     try {
+      console.log(`Storage query filters:`, filters);
+      
       let query = db.select().from(arbitrageOpportunities);
       
       if (filters?.isActive !== undefined) {
+        console.log(`Applying isActive filter: ${filters.isActive}`);
         query = query.where(eq(arbitrageOpportunities.isActive, filters.isActive));
       }
       
       let results = await query.orderBy(desc(arbitrageOpportunities.estimatedProfit));
+      console.log(`Raw query results: ${results.length} opportunities found`);
       
       // Remove duplicates based on token pair and DEX combination
       const uniqueResults = results.filter((opportunity, index, array) => {

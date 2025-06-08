@@ -62,7 +62,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const filters = {
         minProfit: minProfit ? parseFloat(minProfit as string) : undefined,
-        isActive: isActive === 'true',
+        isActive: isActive !== undefined ? isActive === 'true' : undefined,
         limit: limit ? parseInt(limit as string) : 50,
         offset: offset ? parseInt(offset as string) : 0
       };
