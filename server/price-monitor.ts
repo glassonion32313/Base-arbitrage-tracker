@@ -120,18 +120,9 @@ export class PriceMonitor {
   }
 
   async startMonitoring() {
-    if (this.monitoring) return;
-    
-    console.log("Starting price monitoring...");
-    this.monitoring = true;
-    
-    // Initial scan
-    await this.scanForOpportunities();
-    
-    // Set up recurring scans
-    this.interval = setInterval(() => {
-      this.scanForOpportunities().catch(console.error);
-    }, this.UPDATE_INTERVAL);
+    // DISABLED: Fake price monitoring eliminated
+    console.log("❌ FAKE PRICE MONITORING DISABLED - Using live DEX monitor only");
+    return;
   }
 
   stopMonitoring() {

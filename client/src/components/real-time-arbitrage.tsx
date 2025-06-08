@@ -1,250 +1,255 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { TrendingUp, TrendingDown, Zap, DollarSign } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { TrendingUp, TrendingDown, Zap, AlertTriangle } from 'lucide-react';
 
-interface RealTimePriceData {
+interface LiveDEXPrice {
   pair: string;
+  tokenA: string;
+  tokenB: string;
   buyDex: string;
   sellDex: string;
   buyPrice: number;
   sellPrice: number;
-  optimalFlashloanSize: string;
-  realProfit: number;
-  gasEstimate: number;
-  netProfit: number;
-  timestamp: Date;
+  priceDiff: number;
+  blockNumber: number;
+  realProfitUSD: number;
+  gasEstimateUSD: number;
+  netProfitUSD: number;
+  flashloanAmount: string;
+  timestamp: string;
 }
 
 export function RealTimeArbitrage() {
-  const [opportunities, setOpportunities] = useState<RealTimePriceData[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const { toast } = useToast();
+  const [opportunities, setOpportunities] = useState<LiveDEXPrice[]>([]);
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
+  const [lastBlockNumber, setLastBlockNumber] = useState<number>(0);
 
   useEffect(() => {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws/arbitrage`;
-    
-    const ws = new WebSocket(wsUrl);
+    const wsUrl = `${protocol}//${window.location.host}/ws/live-dex`;
+    const socket = new WebSocket(wsUrl);
 
-    ws.onopen = () => {
-      setIsConnected(true);
-      console.log('Connected to real-time arbitrage feed');
+    socket.onopen = () => {
+      console.log('Connected to live DEX monitor');
+      setConnectionStatus('connected');
     };
 
-    ws.onmessage = (event) => {
+    socket.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data);
-        if (message.type === 'arbitrage_opportunities') {
+        if (message.type === 'live_dex_opportunities') {
           setOpportunities(message.data);
-          setLastUpdate(new Date(message.timestamp));
+          if (message.data.length > 0) {
+            setLastBlockNumber(message.data[0].blockNumber);
+          }
         }
       } catch (error) {
-        console.error('Failed to parse WebSocket message:', error);
+        console.error('Error parsing WebSocket message:', error);
       }
     };
 
-    ws.onclose = () => {
-      setIsConnected(false);
-      console.log('Disconnected from real-time arbitrage feed');
+    socket.onclose = () => {
+      console.log('Disconnected from live DEX monitor');
+      setConnectionStatus('disconnected');
     };
 
-    ws.onerror = (error) => {
+    socket.onerror = (error) => {
       console.error('WebSocket error:', error);
-      setIsConnected(false);
+      setConnectionStatus('disconnected');
     };
 
     return () => {
-      ws.close();
+      socket.close();
     };
   }, []);
 
-  const executeArbitrage = async (opportunity: RealTimePriceData) => {
+  const executeArbitrage = async (opportunity: LiveDEXPrice) => {
     try {
-      const response = await fetch('/api/contract/execute-arbitrage', {
+      const response = await fetch('/api/execute-arbitrage', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          tokenA: opportunity.pair.split('/')[0],
-          tokenB: opportunity.pair.split('/')[1],
-          amountIn: opportunity.optimalFlashloanSize,
+          tokenA: opportunity.tokenA,
+          tokenB: opportunity.tokenB,
+          amountIn: opportunity.flashloanAmount,
           buyDex: opportunity.buyDex,
           sellDex: opportunity.sellDex,
-          minProfit: opportunity.netProfit.toString()
+          minProfit: opportunity.netProfitUSD.toString()
         })
       });
 
       const result = await response.json();
-      
       if (result.success) {
-        toast({
-          title: "Arbitrage Executed!",
-          description: `Transaction: ${result.txHash}`,
-        });
+        alert(`Transaction submitted: ${result.txHash}`);
       } else {
-        toast({
-          title: "Execution Failed",
-          description: result.error,
-          variant: "destructive",
-        });
+        alert(`Execution failed: ${result.error}`);
       }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+    } catch (error) {
+      alert('Failed to execute arbitrage');
     }
   };
 
-  const formatUSD = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  };
-
-  const formatPercentage = (buyPrice: number, sellPrice: number) => {
-    const diff = ((sellPrice - buyPrice) / buyPrice) * 100;
-    return diff.toFixed(3) + '%';
+  const getStatusColor = () => {
+    switch (connectionStatus) {
+      case 'connected': return 'bg-green-500';
+      case 'connecting': return 'bg-yellow-500';
+      case 'disconnected': return 'bg-red-500';
+    }
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Real-Time Arbitrage Scanner</h1>
-          <p className="text-muted-foreground">
-            Live DEX price feeds with optimal flashloan calculations
-          </p>
-        </div>
-        
-        <div className="flex items-center space-x-3">
-          <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${
-            isConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-          }`}>
-            <div className={`w-2 h-2 rounded-full ${
-              isConnected ? 'bg-green-500' : 'bg-red-500'
-            }`} />
-            <span className="text-sm font-medium">
-              {isConnected ? 'Connected' : 'Disconnected'}
-            </span>
-          </div>
-          
-          {lastUpdate && (
-            <div className="text-sm text-muted-foreground">
-              Last update: {lastUpdate.toLocaleTimeString()}
-            </div>
+        <h1 className="text-3xl font-bold">Live DEX Arbitrage Scanner</h1>
+        <div className="flex items-center space-x-2">
+          <div className={`w-3 h-3 rounded-full ${getStatusColor()}`} />
+          <span className="text-sm font-medium capitalize">{connectionStatus}</span>
+          {lastBlockNumber > 0 && (
+            <Badge variant="outline">Block #{lastBlockNumber}</Badge>
           )}
         </div>
       </div>
 
-      {opportunities.length === 0 ? (
-        <Card>
-          <CardContent className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <TrendingUp className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-muted-foreground">
-                Scanning for opportunities...
-              </h3>
-              <p className="text-sm text-muted-foreground mt-2">
-                {isConnected ? 'Monitoring live DEX prices' : 'Connecting to price feed...'}
-              </p>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="h-5 w-5" />
+            Real-Time Blockchain Price Monitoring
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+            <div>
+              <span className="font-medium">Data Source:</span>
+              <p className="text-muted-foreground">Live DEX smart contracts on Base</p>
+            </div>
+            <div>
+              <span className="font-medium">Update Frequency:</span>
+              <p className="text-muted-foreground">Every new block (~2 seconds)</p>
+            </div>
+            <div>
+              <span className="font-medium">Price Method:</span>
+              <p className="text-muted-foreground">Direct router.getAmountsOut() calls</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {connectionStatus === 'disconnected' && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              <span>Connection lost. Attempting to reconnect...</span>
             </div>
           </CardContent>
         </Card>
-      ) : (
-        <div className="grid gap-4">
-          {opportunities.map((opportunity, index) => (
-            <Card key={index} className="border border-green-200 bg-green-50">
-              <CardHeader className="pb-3">
+      )}
+
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold">
+          Live Arbitrage Opportunities ({opportunities.length})
+        </h2>
+        
+        {opportunities.length === 0 ? (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center text-muted-foreground">
+                {connectionStatus === 'connected' 
+                  ? 'Scanning for profitable opportunities...' 
+                  : 'Waiting for connection...'
+                }
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          opportunities.map((opp, index) => (
+            <Card key={index} className="border-l-4 border-l-green-500">
+              <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-xl font-bold text-green-800">
-                    {opportunity.pair}
-                  </CardTitle>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Badge variant="outline" className="bg-green-100 text-green-800">
-                      {formatPercentage(opportunity.buyPrice, opportunity.sellPrice)} spread
+                  <CardTitle className="text-lg">{opp.pair}</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={opp.netProfitUSD > 0 ? 'default' : 'destructive'}>
+                      ${opp.netProfitUSD.toFixed(2)} Profit
                     </Badge>
-                    <Badge className="bg-green-600 text-white">
-                      <DollarSign className="w-3 h-3 mr-1" />
-                      {formatUSD(opportunity.netProfit)} profit
-                    </Badge>
+                    <Badge variant="outline">Block #{opp.blockNumber}</Badge>
                   </div>
                 </div>
               </CardHeader>
-              
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-muted-foreground">Buy from</p>
-                    <p className="text-lg font-semibold text-blue-600">
-                      {opportunity.buyDex}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      ${opportunity.buyPrice.toFixed(6)}
-                    </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <TrendingDown className="h-4 w-4 text-red-500" />
+                      <span className="font-medium">Buy from {opp.buyDex}</span>
+                    </div>
+                    <div className="text-2xl font-bold text-red-600">
+                      ${opp.buyPrice.toFixed(6)}
+                    </div>
                   </div>
                   
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-muted-foreground">Sell to</p>
-                    <p className="text-lg font-semibold text-orange-600">
-                      {opportunity.sellDex}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      ${opportunity.sellPrice.toFixed(6)}
-                    </p>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-green-500" />
+                      <span className="font-medium">Sell to {opp.sellDex}</span>
+                    </div>
+                    <div className="text-2xl font-bold text-green-600">
+                      ${opp.sellPrice.toFixed(6)}
+                    </div>
                   </div>
                   
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-muted-foreground">Flashloan Size</p>
-                    <p className="text-lg font-semibold">
-                      {opportunity.optimalFlashloanSize} ETH
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Optimized amount
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-muted-foreground">Net Profit</p>
-                    <p className="text-lg font-semibold text-green-600">
-                      {formatUSD(opportunity.netProfit)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      After gas: {formatUSD(opportunity.gasEstimate)}
-                    </p>
+                  <div className="space-y-2">
+                    <span className="font-medium">Price Difference</span>
+                    <div className="text-2xl font-bold">
+                      ${opp.priceDiff.toFixed(6)}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {((opp.priceDiff / opp.buyPrice) * 100).toFixed(3)}%
+                    </div>
                   </div>
                 </div>
-                
-                <div className="flex items-center justify-between pt-3 border-t">
-                  <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                    <span>Gross: {formatUSD(opportunity.realProfit)}</span>
-                    <span>Gas: {formatUSD(opportunity.gasEstimate)}</span>
-                    <span>Updated: {new Date(opportunity.timestamp).toLocaleTimeString()}</span>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
+                  <div>
+                    <span className="text-sm font-medium">Flashloan Amount</span>
+                    <div className="text-lg">{opp.flashloanAmount} ETH</div>
                   </div>
-                  
+                  <div>
+                    <span className="text-sm font-medium">Gross Profit</span>
+                    <div className="text-lg text-green-600">
+                      ${opp.realProfitUSD.toFixed(2)}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium">Gas + Fees</span>
+                    <div className="text-lg text-red-600">
+                      ${opp.gasEstimateUSD.toFixed(2)}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium">Net Profit</span>
+                    <div className={`text-lg font-bold ${opp.netProfitUSD > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      ${opp.netProfitUSD.toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t">
                   <Button 
-                    onClick={() => executeArbitrage(opportunity)}
-                    className="bg-green-600 hover:bg-green-700 text-white"
+                    onClick={() => executeArbitrage(opp)}
+                    disabled={opp.netProfitUSD <= 0}
+                    className="w-full"
                   >
-                    <Zap className="w-4 h-4 mr-2" />
-                    Execute Trade
+                    Execute Arbitrage (Net: ${opp.netProfitUSD.toFixed(2)})
                   </Button>
                 </div>
               </CardContent>
             </Card>
-          ))}
-        </div>
-      )}
+          ))
+        )}
+      </div>
     </div>
   );
 }

@@ -416,10 +416,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ message: "Protected route accessed", userId });
   });
 
-  // Start price monitoring
-  if (!priceMonitor.isMonitoring()) {
-    priceMonitor.startMonitoring();
-  }
+  // Completely disable fake price monitoring system
+  const { priceMonitor } = await import('./price-monitor');
+  priceMonitor.stopMonitoring();
 
   // Create HTTP server
   const httpServer = createServer(app);
@@ -609,10 +608,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Initialize real-time arbitrage monitoring with WebSocket
-  const { realTimeArbitrage } = await import('./real-time-arbitrage');
-  realTimeArbitrage.setupWebSocket(httpServer);
-  realTimeArbitrage.startMonitoring();
+  // Initialize live DEX monitor with real blockchain prices
+  const { liveDEXMonitor } = await import('./live-dex-monitor');
+  liveDEXMonitor.setupWebSocket(httpServer);
+  await liveDEXMonitor.startMonitoring();
   
   return httpServer;
 }
