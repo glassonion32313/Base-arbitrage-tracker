@@ -199,6 +199,14 @@ export default function ArbitrageScanner() {
                 <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
               </Button>
 
+              {/* Simple Contract Interface */}
+              <Link href="/simple">
+                <Button variant="outline" size="sm">
+                  <Code className="w-4 h-4 mr-2" />
+                  Smart Contract
+                </Button>
+              </Link>
+
               {/* User Authentication */}
               <WorkingAuthHeader />
             </div>

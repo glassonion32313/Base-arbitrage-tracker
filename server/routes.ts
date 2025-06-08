@@ -609,5 +609,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Initialize real-time arbitrage monitoring with WebSocket
+  const { realTimeArbitrage } = await import('./real-time-arbitrage');
+  realTimeArbitrage.setupWebSocket(httpServer);
+  await realTimeArbitrage.startMonitoring();
+  
   return httpServer;
 }
