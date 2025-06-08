@@ -11,7 +11,10 @@ export async function apiRequest(
   url: string,
   options?: RequestInit,
 ): Promise<any> {
-  const body = options?.body ? JSON.stringify(options.body) : undefined;
+  // Only stringify if body is not already a string
+  const body = options?.body 
+    ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body))
+    : undefined;
   const token = localStorage.getItem('auth_token');
   
   const res = await fetch(url, {
