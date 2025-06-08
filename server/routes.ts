@@ -181,14 +181,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Clear all opportunities
+  // Clear all opportunities (protected - minimum 5 minutes to preserve recent opportunities)
   app.delete('/api/opportunities/all', async (req, res) => {
     try {
-      const count = await storage.clearStaleOpportunities(0); // Clear all
-      res.json({ cleared: count, message: `Cleared all ${count} opportunities` });
+      const count = await storage.clearStaleOpportunities(5); // Minimum 5 minutes protection
+      res.json({ cleared: count, message: `Cleared ${count} opportunities (keeping recent ones for trading)` });
     } catch (error) {
-      console.error('Failed to clear all opportunities:', error);
-      res.status(500).json({ error: 'Failed to clear all opportunities' });
+      console.error('Failed to clear opportunities:', error);
+      res.status(500).json({ error: 'Failed to clear opportunities' });
     }
   });
 

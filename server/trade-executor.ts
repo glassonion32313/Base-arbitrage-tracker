@@ -41,9 +41,10 @@ export class TradeExecutor {
       if (!opportunity) {
         // Try to find similar opportunity if specific ID not found
         const allOpportunities = await storage.getArbitrageOpportunities({ limit: 20 });
-        const recentOpportunities = allOpportunities.filter(opp => 
-          new Date().getTime() - new Date(opp.lastUpdated).getTime() < 30 * 60 * 1000 // Within 30 minutes
-        );
+        const recentOpportunities = allOpportunities.filter(opp => {
+          const lastUpdated = opp.lastUpdated ? new Date(opp.lastUpdated) : new Date();
+          return new Date().getTime() - lastUpdated.getTime() < 30 * 60 * 1000; // Within 30 minutes
+        });
         
         if (recentOpportunities.length > 0) {
           // Use the most profitable recent opportunity as fallback

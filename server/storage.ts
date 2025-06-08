@@ -282,7 +282,10 @@ export class DatabaseStorage implements IStorage {
 
   async clearStaleOpportunities(olderThanMinutes: number): Promise<number> {
     try {
-      const cutoff = new Date(Date.now() - olderThanMinutes * 60 * 1000);
+      // Enforce minimum 5 minutes to protect active trading
+      const protectedMinutes = Math.max(olderThanMinutes, 5);
+      const cutoff = new Date(Date.now() - protectedMinutes * 60 * 1000);
+      
       const staleOpportunities = await db
         .select()
         .from(arbitrageOpportunities)
@@ -292,6 +295,8 @@ export class DatabaseStorage implements IStorage {
         await db
           .delete(arbitrageOpportunities)
           .where(lt(arbitrageOpportunities.lastUpdated, cutoff));
+        
+        console.log(`Cleared ${staleOpportunities.length} opportunities older than ${protectedMinutes} minutes`);
       }
       
       return staleOpportunities.length;
