@@ -39,20 +39,13 @@ export class OnChainPriceService {
     "function token1() external view returns (address)"
   ];
 
-  // Base network DEX factory addresses (verified)
+  // Base network DEX factory addresses
   private readonly FACTORIES = {
-    'Uniswap V3': '0x33128a8fC17869897dcE68Ed026d694621f6FDfD',
+    'Uniswap': '0x33128a8fC17869897dcE68Ed026d694621f6FDfD',
     'SushiSwap': '0x71524B4f93c58fcbF659783284E38825f0622859',
     'BaseSwap': '0xFDa619b6d20975be80A10332cD39b9a4b0FAa8BB',
-    'Aerodrome': '0x420DD381b31aEf6683db6B902084cB0FFECe40Da'
-  };
-
-  // Known working pool addresses on Base (manually verified)
-  private readonly KNOWN_POOLS = {
-    'WETH/USDC_Uniswap': '0x4C36388bE6F416A29C8d8Eee81C771cE6bE14B18',
-    'WETH/USDC_Aerodrome': '0xcDAC0d6c6C59727a65F871236188350531885C43',
-    'USDC/USDT_Uniswap': '0xf8B8AcDFb9e6fB38B96fa81d1c7c1a7ed7F5CA6E',
-    'LINK/USDC_Uniswap': '0x2bf26E6E5C1E6e8e5C30B2F1C3C4a6A0f1f1A1A1'
+    'Aerodrome': '0x420DD381b31aEf6683db6B902084cB0FFECe40Da',
+    'PancakeSwap': '0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865'
   };
 
   // Token addresses on Base

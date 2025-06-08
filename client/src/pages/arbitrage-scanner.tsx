@@ -8,12 +8,10 @@ import MonitoringDashboard from "@/components/monitoring-dashboard";
 import NotificationCenter from "@/components/notification-center";
 import MEVProtection from "@/components/mev-protection";
 import AutoTrading from "@/components/auto-trading";
-import { EmergencyWithdrawal } from "@/components/emergency-withdrawal";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, TrendingUp, Activity, Bell, Shield, Zap, Code } from "lucide-react";
-import { Link } from "wouter";
+import { RefreshCw, TrendingUp, Activity, Bell, Shield, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useWebSocketOpportunities } from "@/hooks/use-websocket";
 
@@ -199,14 +197,6 @@ export default function ArbitrageScanner() {
                 <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
               </Button>
 
-              {/* Simple Contract Interface */}
-              <Link href="/simple">
-                <Button variant="outline" size="sm">
-                  <Code className="w-4 h-4 mr-2" />
-                  Smart Contract
-                </Button>
-              </Link>
-
               {/* User Authentication */}
               <WorkingAuthHeader />
             </div>
@@ -354,10 +344,7 @@ export default function ArbitrageScanner() {
               </TabsContent>
 
               <TabsContent value="auto" className="space-y-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <AutoTrading />
-                  <EmergencyWithdrawal />
-                </div>
+                <AutoTrading />
               </TabsContent>
             </Tabs>
           </div>

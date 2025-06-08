@@ -7,16 +7,12 @@ import ArbitrageScanner from "@/pages/arbitrage-scanner";
 import AccountSettings from "@/pages/account-settings";
 import SimpleLogin from "@/components/simple-login";
 import NotFound from "@/pages/not-found";
-import { SimpleArbitrage } from "@/components/simple-arbitrage";
-import { RealTimeArbitrage } from "@/components/real-time-arbitrage";
 import { useAuth } from "@/hooks/use-auth";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={ArbitrageScanner} />
-      <Route path="/simple" component={SimpleArbitrage} />
-      <Route path="/live" component={RealTimeArbitrage} />
       <Route path="/account" component={AccountSettings} />
       <Route component={NotFound} />
     </Switch>

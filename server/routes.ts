@@ -86,52 +86,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/emergency-withdraw', async (req, res) => {
-    try {
-      const token = req.headers.authorization?.replace('Bearer ', '');
-      if (!token) return res.status(401).json({ error: 'No token' });
-
-      const user = await authService.validateToken(token);
-      if (!user) return res.status(401).json({ error: 'Invalid token' });
-
-      const privateKey = await authService.getPrivateKey(user.id);
-      const { ethers } = await import('ethers');
-      const provider = new ethers.JsonRpcProvider(`https://base-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`);
-      
-      const fs = await import('fs');
-      const deployment = JSON.parse(fs.readFileSync('deployment.json', 'utf8'));
-      const contractABI = JSON.parse(fs.readFileSync('arbitragebot_abi.json', 'utf8'));
-      
-      const wallet = new ethers.Wallet(privateKey, provider);
-      const contract = new ethers.Contract(deployment.address, contractABI, wallet);
-      
-      const contractBalance = await provider.getBalance(deployment.address);
-      if (contractBalance === 0n) {
-        return res.json({ success: false, message: 'No ETH in contract', contractBalance: '0' });
-      }
-      
-      const tx = await contract.withdraw({
-        gasLimit: 50000,
-        gasPrice: ethers.parseUnits('0.01', 'gwei')
-      });
-      
-      await tx.wait();
-      
-      const finalWalletBalance = await provider.getBalance(wallet.address);
-      
-      res.json({
-        success: true,
-        txHash: tx.hash,
-        recovered: ethers.formatEther(contractBalance),
-        newWalletBalance: ethers.formatEther(finalWalletBalance),
-        basescan: `https://basescan.org/tx/${tx.hash}`
-      });
-      
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
   app.post('/api/auth/private-key', async (req, res) => {
     try {
       const token = req.headers.authorization?.replace('Bearer ', '');
@@ -416,11 +370,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ message: "Protected route accessed", userId });
   });
 
-  // Completely disable fake price monitoring system
-  const { priceMonitor } = await import('./price-monitor');
-  priceMonitor.stopMonitoring();
+  // Start price monitoring
+  if (!priceMonitor.isMonitoring()) {
+    priceMonitor.startMonitoring();
+  }
 
-  // Create HTTP server
+  // WebSocket server setup
   const httpServer = createServer(app);
   
   const wss = new WebSocketServer({ 
@@ -449,169 +404,5 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }));
   });
 
-  // Bot control endpoints
-  app.get('/api/bot/status', async (req, res) => {
-    try {
-      const { priceMonitor } = await import('./price-monitor');
-      
-      res.json({
-        monitoring: priceMonitor.isMonitoring(),
-        status: priceMonitor.getStatus()
-      });
-    } catch (error) {
-      console.error('Error fetching bot status:', error);
-      res.status(500).json({ message: 'Failed to fetch bot status' });
-    }
-  });
-
-  app.post('/api/bot/start', async (req, res) => {
-    try {
-      const { priceMonitor } = await import('./price-monitor');
-      
-      if (!priceMonitor.isMonitoring()) {
-        await priceMonitor.startMonitoring();
-        res.json({ message: 'Bot started successfully', monitoring: true });
-      } else {
-        res.json({ message: 'Bot is already running', monitoring: true });
-      }
-    } catch (error) {
-      console.error('Error starting bot:', error);
-      res.status(500).json({ message: 'Failed to start bot' });
-    }
-  });
-
-  app.post('/api/bot/stop', async (req, res) => {
-    try {
-      const { priceMonitor } = await import('./price-monitor');
-      
-      if (priceMonitor.isMonitoring()) {
-        priceMonitor.stopMonitoring();
-        res.json({ message: 'Bot stopped successfully', monitoring: false });
-      } else {
-        res.json({ message: 'Bot is already stopped', monitoring: false });
-      }
-    } catch (error) {
-      console.error('Error stopping bot:', error);
-      res.status(500).json({ message: 'Failed to stop bot' });
-    }
-  });
-
-  // Simple contract arbitrage routes
-  app.post('/api/contract/estimate-profit', isAuthenticated, async (req: any, res) => {
-    try {
-      const { simpleContractExecutor } = await import('./simple-contract-executor');
-      const estimatedProfit = await simpleContractExecutor.estimateProfit(req.body);
-      
-      res.json({ 
-        success: true,
-        estimatedProfit: estimatedProfit
-      });
-    } catch (error: any) {
-      console.error('Profit estimation error:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error.message || 'Profit estimation failed' 
-      });
-    }
-  });
-
-  app.post('/api/contract/execute-arbitrage', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const userAccount = await storage.getUser(userId);
-      
-      if (!userAccount?.encryptedPrivateKey) {
-        return res.status(400).json({ 
-          success: false, 
-          error: 'No private key found. Please add your private key in settings.' 
-        });
-      }
-
-      const privateKey = await authService.getPrivateKey(parseInt(userId));
-      const { simpleContractExecutor } = await import('./simple-contract-executor');
-      const txHash = await simpleContractExecutor.executeArbitrage(req.body, privateKey);
-      
-      res.json({ 
-        success: true,
-        txHash: txHash
-      });
-    } catch (error: any) {
-      console.error('Arbitrage execution error:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error.message || 'Arbitrage execution failed' 
-      });
-    }
-  });
-
-  // Set user private key for trading
-  app.post('/api/trading/set-private-key', async (req, res) => {
-    try {
-      const { privateKey } = req.body;
-      
-      if (!privateKey || !privateKey.startsWith('0x')) {
-        return res.status(400).json({ error: 'Valid private key required (must start with 0x)' });
-      }
-
-      // Set environment variable for trading
-      process.env.TRADING_PRIVATE_KEY = privateKey;
-      
-      // Get wallet info using the new private key
-      const { ethers } = await import('ethers');
-      const provider = new ethers.JsonRpcProvider(
-        `https://base-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`
-      );
-      const wallet = new ethers.Wallet(privateKey, provider);
-      const balance = await provider.getBalance(wallet.address);
-      
-      res.json({
-        message: 'Private key configured successfully',
-        walletAddress: wallet.address,
-        balance: ethers.formatEther(balance),
-        network: 'Base Mainnet',
-        readyForTrading: parseFloat(ethers.formatEther(balance)) > 0.01
-      });
-    } catch (error) {
-      console.error('Error setting private key:', error);
-      res.status(500).json({ message: 'Failed to set private key' });
-    }
-  });
-
-  // Get current wallet info
-  app.get('/api/trading/wallet', async (req, res) => {
-    try {
-      if (!process.env.TRADING_PRIVATE_KEY) {
-        return res.json({
-          configured: false,
-          message: 'No private key configured. Use /api/trading/set-private-key to set one.'
-        });
-      }
-
-      const { ethers } = await import('ethers');
-      const provider = new ethers.JsonRpcProvider(
-        `https://base-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`
-      );
-      const wallet = new ethers.Wallet(process.env.TRADING_PRIVATE_KEY, provider);
-      const balance = await provider.getBalance(wallet.address);
-      
-      res.json({
-        configured: true,
-        address: wallet.address,
-        balance: ethers.formatEther(balance),
-        network: 'Base Mainnet',
-        fundingRequired: parseFloat(ethers.formatEther(balance)) < 0.01,
-        minimumBalance: '0.01 ETH'
-      });
-    } catch (error) {
-      console.error('Error fetching wallet info:', error);
-      res.status(500).json({ message: 'Failed to fetch wallet information' });
-    }
-  });
-
-  // Initialize live DEX monitor with real blockchain prices
-  const { liveDEXMonitor } = await import('./live-dex-monitor');
-  liveDEXMonitor.setupWebSocket(httpServer);
-  await liveDEXMonitor.startMonitoring();
-  
   return httpServer;
 }
