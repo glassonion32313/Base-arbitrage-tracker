@@ -139,8 +139,15 @@ export class PriceMonitor {
       await storage.clearAllOpportunities();
       
       // Fetch live prices from real DEXes on Base network
-      const allPrices: TokenPrice[] = await this.fetchLiveMarketPrices();
-      console.log(`Fetched ${allPrices.length} live prices from Base DEXes`);
+      let allPrices: TokenPrice[];
+      try {
+        allPrices = await this.fetchLiveMarketPrices();
+        console.log(`Fetched ${allPrices.length} live prices from Base DEXes`);
+      } catch (error) {
+        console.error('Live price fetch failed, using blockchain price service:', error);
+        allPrices = await this.fetchOnChainPrices();
+        console.log(`Fetched ${allPrices.length} on-chain prices as fallback`);
+      }
 
       // Group prices by token pair
       const pricesByPair = this.groupPricesByPair(allPrices);
@@ -394,22 +401,17 @@ export class PriceMonitor {
     return liquidityMap[pair] || 500000;
   }
 
-  private async fetchLiveMarketPrices(): TokenPrice[] {
+  private async fetchLiveMarketPrices(): Promise<TokenPrice[]> {
     try {
-      // Fetch real-time prices from Base DEXes using blockchain data
-      const [uniswapPrices, aerodromePrices, baseswapPrices] = await Promise.all([
-        this.fetchUniswapV3Prices(),
-        this.fetchAerodromePrices(),
-        this.fetchBaseSwapPrices()
-      ]);
-
-      const allPrices = [...uniswapPrices, ...aerodromePrices, ...baseswapPrices];
+      // Use the dedicated on-chain price service for real blockchain data
+      const onChainPrices = await this.fetchOnChainPrices();
       
-      if (allPrices.length === 0) {
-        throw new Error('No live prices available from DEXes');
+      if (onChainPrices.length === 0) {
+        throw new Error('No live prices available from blockchain');
       }
-
-      return allPrices;
+      
+      console.log(`Successfully fetched ${onChainPrices.length} live prices from Base network DEXes`);
+      return onChainPrices;
     } catch (error) {
       console.error('Failed to fetch live prices:', error);
       throw error;
@@ -570,29 +572,66 @@ export class PriceMonitor {
   }
 
   private async fetchUniswapPrices(): Promise<TokenPrice[]> {
-    const data = await this.fetchAlchemyPrices();
-    const prices: TokenPrice[] = [];
-    
-    const tokens = [
-      { symbol: 'WETH', coinId: 'ethereum' },
-      { symbol: 'WBTC', coinId: 'bitcoin' },
-      { symbol: 'LINK', coinId: 'chainlink' },
-      { symbol: 'UNI', coinId: 'uniswap' }
-    ];
-    
-    tokens.forEach(token => {
-      if (data[token.coinId]) {
-        prices.push({
-          symbol: `${token.symbol}/USDC`,
-          address: this.getTokenAddress(token.symbol),
-          price: data[token.coinId].usd * (0.9995 + Math.random() * 0.001),
-          dex: "Uniswap V3",
-          timestamp: new Date()
-        });
+    try {
+      const { ethers } = await import('ethers');
+      const provider = new ethers.JsonRpcProvider(`https://base-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`);
+      
+      // Real Uniswap V3 pool addresses on Base network
+      const pools = [
+        {
+          address: '0x4C36388bE6F416A29C8d8Eee81C771cE6bE14B18',
+          token0: 'WETH',
+          token1: 'USDC',
+          fee: 500,
+          token0Decimals: 18,
+          token1Decimals: 6
+        },
+        {
+          address: '0x88A43bbDF9D098eEC7bCEda4e2494615dfD9bB9C',
+          token0: 'WETH', 
+          token1: 'USDC',
+          fee: 3000,
+          token0Decimals: 18,
+          token1Decimals: 6
+        }
+      ];
+
+      const prices: TokenPrice[] = [];
+      
+      for (const pool of pools) {
+        try {
+          const poolContract = new ethers.Contract(pool.address, [
+            'function slot0() external view returns (uint160 sqrtPriceX96, int24 tick, uint16 observationIndex, uint16 observationCardinality, uint16 observationCardinalityNext, uint8 feeProtocol, bool unlocked)'
+          ], provider);
+          
+          const result = await poolContract.slot0();
+          const sqrtPriceX96 = result[0];
+          
+          // Convert sqrtPriceX96 to price
+          const sqrtPrice = Number(sqrtPriceX96) / (2 ** 96);
+          const price = sqrtPrice ** 2;
+          
+          // Adjust for token decimals
+          const decimalAdjustment = 10 ** (pool.token0Decimals - pool.token1Decimals);
+          const adjustedPrice = price * decimalAdjustment;
+          
+          prices.push({
+            symbol: `${pool.token0}/${pool.token1}`,
+            address: this.getTokenAddress(pool.token0),
+            price: adjustedPrice,
+            dex: 'Uniswap V3',
+            timestamp: new Date()
+          });
+        } catch (poolError) {
+          console.error(`Uniswap V3 pool ${pool.address} error:`, poolError);
+        }
       }
-    });
-    
-    return prices;
+
+      return prices;
+    } catch (error) {
+      console.error('Uniswap V3 price fetch failed:', error);
+      return [];
+    }
   }
 
   private async fetchSushiSwapPrices(): Promise<TokenPrice[]> {
