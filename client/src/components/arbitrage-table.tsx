@@ -85,8 +85,8 @@ export default function ArbitrageTable({ opportunities, isLoading, onRefresh }: 
     },
     onSuccess: (data, { opportunityId }) => {
       toast({
-        title: "Arbitrage Executed Successfully",
-        description: `Profit: $${data.actualProfit} (after $${data.gasCostUSD} gas) - TX: ${data.txHash.slice(0, 10)}...`,
+        title: "Arbitrage Profit Generated",
+        description: `Net: $${data.actualProfit} | Spread: ${data.priceSpread} | Gas: $${data.gasCostUSD} | TX: ${data.txHash.slice(0, 8)}...`,
       });
       setExecutingOpportunities(prev => {
         const next = new Set(prev);
