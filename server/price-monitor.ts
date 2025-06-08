@@ -134,7 +134,7 @@ export class PriceMonitor {
       }
 
       // Clear old opportunities and add new ones
-      await storage.clearStaleOpportunities(30); // Clear opportunities older than 30 minutes
+      await storage.clearStaleOpportunities(0.75); // Clear opportunities older than 45 seconds
       
       // Save new opportunities and broadcast via WebSocket
       for (const opportunity of opportunities) {

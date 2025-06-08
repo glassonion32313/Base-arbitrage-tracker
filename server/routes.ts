@@ -172,7 +172,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Clear stale opportunities (older than specified minutes)
   app.delete('/api/opportunities/stale', async (req, res) => {
     try {
-      const minutes = parseInt(req.query.minutes as string) || 5;
+      const minutes = parseFloat(req.query.minutes as string) || 0.75; // Default to 45 seconds
       const count = await storage.clearStaleOpportunities(minutes);
       res.json({ cleared: count, message: `Cleared ${count} stale opportunities` });
     } catch (error) {
@@ -181,10 +181,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Clear all opportunities (protected - minimum 5 minutes to preserve recent opportunities)
+  // Clear all opportunities (protected - minimum 45 seconds to preserve recent opportunities)
   app.delete('/api/opportunities/all', async (req, res) => {
     try {
-      const count = await storage.clearStaleOpportunities(5); // Minimum 5 minutes protection
+      const count = await storage.clearStaleOpportunities(0.75); // Minimum 45 seconds protection
       res.json({ cleared: count, message: `Cleared ${count} opportunities (keeping recent ones for trading)` });
     } catch (error) {
       console.error('Failed to clear opportunities:', error);
