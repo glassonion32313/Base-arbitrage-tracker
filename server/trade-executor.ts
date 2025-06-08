@@ -133,13 +133,33 @@ export class TradeExecutor {
         throw new Error('Contract service not available');
       }
 
-      // Prepare transaction parameters
+      // Map DEX names to router addresses
+      const DEX_ROUTERS = {
+        'Uniswap': '0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24',
+        'SushiSwap': '0x6BDED42c6DA8FBf0d2bA55B2fa120C5e0c8D7891',
+        'PancakeSwap': '0x13f4EA83D0bd40E75C8222255bc855a974568Dd4',
+        'BaseSwap': '0x327Df1E6de05895d2ab08513aaDD9313Fe505d86',
+        'Aerodrome': '0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43',
+        'Velodrome': '0x9c12939390052919aF3155f41Bf4160Fd3666A6f',
+        'Curve': '0xd6681e74eEA20d196c15038C580f721EF2aB6320',
+        'Maverick': '0x32AED3Bce901DA12ca8489788F3A99fCe1056e14'
+      };
+
+      const getBuyDexRouter = (dexName: string) => {
+        return DEX_ROUTERS[dexName as keyof typeof DEX_ROUTERS] || DEX_ROUTERS['Uniswap'];
+      };
+
+      const getSellDexRouter = (dexName: string) => {
+        return DEX_ROUTERS[dexName as keyof typeof DEX_ROUTERS] || DEX_ROUTERS['Uniswap'];
+      };
+
+      // Prepare transaction parameters with router addresses
       const arbitrageParams = {
         tokenA: opportunity.token0Address,
         tokenB: opportunity.token1Address,
         amountIn,
-        buyDex: opportunity.buyDex,
-        sellDex: opportunity.sellDex,
+        buyDex: getBuyDexRouter(opportunity.buyDex),
+        sellDex: getSellDexRouter(opportunity.sellDex),
         minProfit: ethers.parseEther('0.01').toString() // Minimum $0.01 profit
       };
 
