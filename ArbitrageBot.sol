@@ -138,15 +138,25 @@ contract ArbitrageBot {
         uint256 amountIn,
         address dexRouter
     ) internal {
+        // Check balance before trade
+        uint256 balanceBefore = IERC20(tokenIn).balanceOf(address(this));
+        require(balanceBefore >= amountIn, "Insufficient balance");
+        
+        // Approve with safety checks
+        IERC20(tokenIn).approve(dexRouter, 0); // Reset approval
         IERC20(tokenIn).approve(dexRouter, amountIn);
         
         address[] memory path = new address[](2);
         path[0] = tokenIn;
         path[1] = tokenOut;
         
+        // Get expected output for slippage protection
+        uint256[] memory expectedAmounts = IUniswapV2Router(dexRouter).getAmountsOut(amountIn, path);
+        uint256 minAmountOut = (expectedAmounts[1] * 95) / 100; // 5% slippage tolerance
+        
         IUniswapV2Router(dexRouter).swapExactTokensForTokens(
             amountIn,
-            0,
+            minAmountOut,
             path,
             address(this),
             block.timestamp + 300

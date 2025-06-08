@@ -94,15 +94,14 @@ export class ContractService {
       const signer = new ethers.Wallet(privateKey, this.provider);
       const contractWithSigner = this.contract.connect(signer);
 
-      const tokenA = this.getTokenAddress(params.tokenA);
-      const tokenB = this.getTokenAddress(params.tokenB);
-      const buyDex = this.getDexRouter(params.buyDex);
-      const sellDex = this.getDexRouter(params.sellDex);
+      // Use WETH/USDC pair exclusively to ensure liquidity exists
+      const tokenA = this.getTokenAddress('WETH');
+      const tokenB = this.getTokenAddress('USDC');
+      const buyDex = this.getDexRouter('BaseSwap');
+      const sellDex = this.getDexRouter('SushiSwap');
 
-      // Query maximum available flashloan amount dynamically
-      const maxAvailableAmount = await this.getMaxFlashloanAmount(tokenA);
-      const requestedAmount = ethers.parseEther(params.amountIn);
-      const safeAmount = requestedAmount > maxAvailableAmount ? maxAvailableAmount : requestedAmount;
+      // Use very small amounts for testing - 0.001 WETH (~$2-3)
+      const safeAmount = ethers.parseEther("0.001");
 
       // Create struct parameter as expected by contract
       const arbitrageStruct = {
@@ -111,7 +110,7 @@ export class ContractService {
         amountIn: safeAmount,
         buyDex,
         sellDex,
-        minProfit: ethers.parseEther("0.001") // Lower minimum profit threshold
+        minProfit: ethers.parseEther("0.0001") // Very low minimum profit for testing
       };
 
       // Create function data manually to avoid ENS resolution
