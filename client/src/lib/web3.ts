@@ -28,6 +28,10 @@ export const DEX_CONTRACTS = {
     router: '0x327Df1E6de05895d2ab08513aaDD9313Fe505d86',
     factory: '0xFDa619b6d20975be80A10332cD39b9a4b0FAa8BB',
   },
+  BALANCER: {
+    vault: '0xBA12222222228d8Ba445958a75a0704d566BF2C8',
+    flashloanProvider: '0xBA12222222228d8Ba445958a75a0704d566BF2C8',
+  },
 };
 
 // Common token addresses on Base
@@ -147,6 +151,39 @@ export class Web3Service {
     };
 
     const tx = await routerContract.exactInputSingle(params);
+    return tx.hash;
+  }
+
+  async executeFlashloanArbitrage(
+    tokenAddress: string,
+    amount: string,
+    buyDex: string,
+    sellDex: string,
+    recipient: string
+  ): Promise<string> {
+    if (!this.signer) {
+      throw new Error('Signer not initialized');
+    }
+
+    // Balancer Vault flashloan interface
+    const balancerVault = new ethers.Contract(
+      DEX_CONTRACTS.BALANCER.vault,
+      [
+        'function flashLoan(address recipient, address[] tokens, uint256[] amounts, bytes userData) external',
+      ],
+      this.signer
+    );
+
+    const tokens = [tokenAddress];
+    const amounts = [ethers.utils.parseUnits(amount, 18)];
+    
+    // Encode arbitrage parameters in userData
+    const userData = ethers.utils.defaultAbiCoder.encode(
+      ['string', 'string', 'address'],
+      [buyDex, sellDex, recipient]
+    );
+
+    const tx = await balancerVault.flashLoan(recipient, tokens, amounts, userData);
     return tx.hash;
   }
 

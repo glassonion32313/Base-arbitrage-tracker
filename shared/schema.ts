@@ -33,6 +33,9 @@ export const transactions = pgTable("transactions", {
   expectedProfit: decimal("expected_profit", { precision: 10, scale: 2 }).notNull(),
   actualProfit: decimal("actual_profit", { precision: 10, scale: 2 }),
   gasCost: decimal("gas_cost", { precision: 10, scale: 2 }).notNull(),
+  flashloanAmount: decimal("flashloan_amount", { precision: 20, scale: 8 }),
+  flashloanFee: decimal("flashloan_fee", { precision: 10, scale: 8 }),
+  isFlashloan: boolean("is_flashloan").default(false),
   status: text("status").notNull().default("pending"), // pending, confirmed, failed
   createdAt: timestamp("created_at").defaultNow(),
   confirmedAt: timestamp("confirmed_at"),
