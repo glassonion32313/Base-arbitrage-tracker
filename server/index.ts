@@ -43,6 +43,13 @@ app.use((req, res, next) => {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
 
+      // Log all 400 errors with full details
+      if (res.statusCode === 400) {
+        console.error(`400 ERROR: ${req.method} ${path} - Body:`, req.body);
+        console.error(`400 ERROR Headers:`, req.headers);
+        console.error(`400 ERROR Response:`, capturedJsonResponse);
+      }
+
       if (logLine.length > 80) {
         logLine = logLine.slice(0, 79) + "…";
       }
