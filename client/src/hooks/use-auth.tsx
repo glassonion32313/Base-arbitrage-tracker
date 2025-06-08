@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 
@@ -81,7 +81,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     queryClient.clear();
   };
 
-  const value: AuthContextType = {
+  const contextValue: AuthContextType = {
     user: user?.user || null,
     isAuthenticated: !!token && !!user,
     isLoading: isLoading && !!token,
@@ -92,7 +92,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
