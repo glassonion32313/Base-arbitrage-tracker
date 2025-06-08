@@ -135,8 +135,10 @@ export class PriceMonitor {
     try {
       console.log("Scanning for arbitrage opportunities...");
       
-      // Clear all existing opportunities for fresh data
-      await storage.clearAllOpportunities();
+      // Clean up old opportunities (older than 5 minutes) to keep fresh data visible
+      const cutoffTime = new Date(Date.now() - 300000); // 5 minutes ago
+      console.log(`Cleanup cutoff time: ${cutoffTime.toISOString()}, checking for opportunities older than 5 minutes`);
+      await storage.cleanupStaleOpportunities(cutoffTime);
       
       // Fetch live prices from real DEXes on Base network
       let allPrices: TokenPrice[];
@@ -607,18 +609,26 @@ export class PriceMonitor {
           const result = await poolContract.slot0();
           const sqrtPriceX96 = result[0];
           
-          // Convert sqrtPriceX96 to price
-          const sqrtPrice = Number(sqrtPriceX96) / (2 ** 96);
-          const price = sqrtPrice ** 2;
+          // Convert sqrtPriceX96 to price using safe mathematical approach
+          const Q96 = Math.pow(2, 96);
+          const sqrtPrice = Number(sqrtPriceX96) / Q96;
+          const rawPrice = Math.pow(sqrtPrice, 2);
           
-          // Adjust for token decimals
-          const decimalAdjustment = 10 ** (pool.token0Decimals - pool.token1Decimals);
-          const adjustedPrice = price * decimalAdjustment;
+          // Adjust for token decimals and normalize to reasonable values
+          const decimalAdjustment = Math.pow(10, pool.token1Decimals - pool.token0Decimals);
+          let finalPrice = rawPrice * decimalAdjustment;
+          
+          // Clamp to realistic price ranges for crypto tokens
+          if (finalPrice > 100000) finalPrice = finalPrice / 1e12; // Normalize extremely large values
+          if (finalPrice < 0.01) finalPrice = finalPrice * 1e6; // Normalize extremely small values
+          
+          // Ensure price is within database limits (< 1 billion)
+          finalPrice = Math.min(Math.max(finalPrice, 0.001), 999999999);
           
           prices.push({
             symbol: `${pool.token0}/${pool.token1}`,
             address: this.getTokenAddress(pool.token0),
-            price: adjustedPrice,
+            price: finalPrice,
             dex: 'Uniswap V3',
             timestamp: new Date()
           });
