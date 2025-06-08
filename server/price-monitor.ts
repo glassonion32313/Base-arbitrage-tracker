@@ -303,8 +303,8 @@ export class PriceMonitor {
         token1Address: this.getTokenAddress(token1),
         buyDex: lowestPrice.dex,
         sellDex: highestPrice.dex,
-        buyPrice: lowestPrice.price.toFixed(6),
-        sellPrice: highestPrice.price.toFixed(6),
+        buyPrice: this.normalizePrice(lowestPrice.price).toFixed(6),
+        sellPrice: this.normalizePrice(highestPrice.price).toFixed(6),
         priceDifference: priceDiffPercent.toFixed(3),
         estimatedProfit: estimatedProfit.toFixed(2),
         gasCost: gasCost.toFixed(2),
@@ -372,6 +372,19 @@ export class PriceMonitor {
       buyFee: dexFeeMap[buyDex] || 0.003,  // Default to 0.3%
       sellFee: dexFeeMap[sellDex] || 0.003
     };
+  }
+
+  private normalizePrice(price: number): number {
+    // Handle Wei-based values and extreme precision from blockchain
+    if (price > 1e12) {
+      // Convert from Wei to standard units
+      return price / 1e18;
+    }
+    if (price > 1e6) {
+      // Scale down very large values
+      return price / 1e6;
+    }
+    return price;
   }
 
   private estimateGasCost(): number {
