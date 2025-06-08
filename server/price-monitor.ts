@@ -198,6 +198,11 @@ export class PriceMonitor {
 
       console.log(`Found ${opportunities.length} arbitrage opportunities`);
       
+      // AUTO-EXECUTION: Execute profitable opportunities automatically
+      if (opportunities.length > 0) {
+        await this.autoExecuteProfitableOpportunities(opportunities);
+      }
+      
       // Broadcast opportunities summary update with stats
       const broadcastToClients = (global as any).broadcastToClients;
       if (broadcastToClients) {
@@ -735,8 +740,129 @@ export class PriceMonitor {
       monitoring: this.monitoring,
       updateInterval: this.UPDATE_INTERVAL,
       activeSources: this.sources.filter(s => s.enabled).length,
-      totalSources: this.sources.length
+      totalSources: this.sources.length,
+      autoExecutionEnabled: true
     };
+  }
+
+  private async autoExecuteProfitableOpportunities(opportunities: InsertArbitrageOpportunity[]): Promise<void> {
+    console.log(`🤖 AUTO-EXECUTION: Evaluating ${opportunities.length} opportunities for automatic execution`);
+    
+    for (const opportunity of opportunities) {
+      try {
+        // Calculate current gas costs in real-time
+        const currentGasPrice = await this.getCurrentGasPrice();
+        const estimatedGasCost = parseFloat(opportunity.estimatedGas || '5');
+        
+        // Net profit after all costs
+        const netProfit = opportunity.profitUSD - estimatedGasCost;
+        
+        // Auto-execute if profitable after gas
+        if (netProfit > 0.25) { // Minimum $0.25 profit after all costs
+          console.log(`💰 AUTO-EXECUTING: ${opportunity.tokenPair} - Net Profit: $${netProfit.toFixed(2)}`);
+          console.log(`   Buy: ${opportunity.buyDex} @ $${opportunity.buyPrice}`);
+          console.log(`   Sell: ${opportunity.sellDex} @ $${opportunity.sellPrice}`);
+          console.log(`   Gross Profit: $${opportunity.profitUSD.toFixed(2)}`);
+          console.log(`   Gas Cost: $${estimatedGasCost.toFixed(2)}`);
+          console.log(`   Net Profit: $${netProfit.toFixed(2)}`);
+          
+          await this.executeArbitrageTransaction(opportunity);
+        } else {
+          console.log(`⏸️  SKIPPING: ${opportunity.tokenPair} - Net profit $${netProfit.toFixed(2)} below threshold`);
+        }
+      } catch (error) {
+        console.error(`❌ AUTO-EXECUTION ERROR for ${opportunity.tokenPair}:`, error);
+      }
+    }
+  }
+
+  private async executeArbitrageTransaction(opportunity: InsertArbitrageOpportunity): Promise<void> {
+    try {
+      // Import contract service for execution
+      const { getContractService } = await import('./contract-service');
+      const contractService = getContractService();
+      
+      if (!contractService) {
+        throw new Error('Contract service not available');
+      }
+      
+      // Prepare arbitrage parameters
+      const [tokenA, tokenB] = opportunity.tokenPair.split('/');
+      const tradeAmount = Math.min(opportunity.maxTradeSize, 1000); // Cap at $1000 per auto-trade
+      
+      const arbitrageParams = {
+        tokenA: tokenA,
+        tokenB: tokenB,
+        amountIn: tradeAmount.toString(),
+        buyDex: opportunity.buyDex,
+        sellDex: opportunity.sellDex,
+        minProfit: (opportunity.profitUSD * 0.8).toString() // 20% slippage tolerance
+      };
+      
+      console.log(`🚀 Executing arbitrage with params:`, arbitrageParams);
+      
+      // Execute the arbitrage transaction
+      // Note: This would require a private key for actual execution
+      // For now, we simulate the execution and track it
+      await this.simulateArbitrageExecution(opportunity, arbitrageParams);
+      
+    } catch (error) {
+      console.error('Failed to execute arbitrage transaction:', error);
+      throw error;
+    }
+  }
+
+  private async simulateArbitrageExecution(opportunity: InsertArbitrageOpportunity, params: any): Promise<void> {
+    console.log(`✅ SIMULATED EXECUTION: ${opportunity.tokenPair}`);
+    console.log(`   Amount: $${params.amountIn}`);
+    console.log(`   Expected Profit: $${opportunity.profitUSD.toFixed(2)}`);
+    console.log(`   Route: ${params.buyDex} → ${params.sellDex}`);
+    
+    // In a real implementation, this would:
+    // 1. Use the contract service to execute the arbitrage
+    // 2. Get the private key from user authentication
+    // 3. Submit the transaction to the blockchain
+    // 4. Track the transaction hash and status
+    // 5. Update user profits when confirmed
+    
+    // For now, we'll track this as a successful simulation
+    const transactionHash = `0x${Math.random().toString(16).substr(2, 64)}`;
+    console.log(`📝 Transaction Hash (simulated): ${transactionHash}`);
+  }
+
+  private async getCurrentGasPrice(): Promise<number> {
+    try {
+      // Get current Base network gas price via Alchemy
+      const response = await fetch(`https://base-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: 1,
+          jsonrpc: '2.0',
+          method: 'eth_gasPrice'
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const gasPriceWei = parseInt(data.result, 16);
+        const gasPriceGwei = gasPriceWei / 1e9;
+        
+        // Estimate cost for arbitrage transaction (typically ~300,000 gas)
+        const estimatedGasUnits = 300000;
+        const gasCostETH = (gasPriceGwei * estimatedGasUnits) / 1e9;
+        
+        // Convert to USD (ETH price ~$3000 approximation)
+        const gasCostUSD = gasCostETH * 3000;
+        
+        return gasCostUSD;
+      }
+      
+      return 5; // Fallback gas estimate
+    } catch (error) {
+      console.error('Failed to get current gas price:', error);
+      return 5; // Fallback
+    }
   }
 
 }
