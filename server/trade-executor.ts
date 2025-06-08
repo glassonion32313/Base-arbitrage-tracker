@@ -35,12 +35,26 @@ export class TradeExecutor {
       const privateKey = await authService.getPrivateKey(request.userId);
       const wallet = new ethers.Wallet(privateKey, this.provider);
 
-      // Get arbitrage opportunity details by ID
-      const allOpportunities = await storage.getArbitrageOpportunities();
-      const opportunity = allOpportunities.find(opp => opp.id === request.opportunityId);
+      // Get arbitrage opportunity details by ID with retry logic
+      let opportunity = null;
+      let retries = 3;
+      
+      while (retries > 0 && !opportunity) {
+        const allOpportunities = await storage.getArbitrageOpportunities();
+        opportunity = allOpportunities.find(opp => opp.id === request.opportunityId);
+        
+        if (!opportunity) {
+          console.log(`Opportunity ${request.opportunityId} not found, retrying... (${retries} attempts left)`);
+          retries--;
+          if (retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+          }
+        }
+      }
       
       if (!opportunity) {
-        return { success: false, error: 'Opportunity not found' };
+        console.log(`Available opportunities: ${(await storage.getArbitrageOpportunities()).map(o => o.id).join(', ')}`);
+        return { success: false, error: `Opportunity ${request.opportunityId} not found. Available IDs: ${(await storage.getArbitrageOpportunities()).map(o => o.id).join(', ')}` };
       }
 
       // Validate opportunity is still active and profitable

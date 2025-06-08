@@ -198,8 +198,46 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createArbitrageOpportunity(opportunity: InsertArbitrageOpportunity): Promise<ArbitrageOpportunity> {
-    const [result] = await db.insert(arbitrageOpportunities).values(opportunity).returning();
-    return result;
+    try {
+      // First check if similar opportunity exists
+      const existing = await db
+        .select()
+        .from(arbitrageOpportunities)
+        .where(
+          and(
+            eq(arbitrageOpportunities.tokenPair, opportunity.tokenPair),
+            eq(arbitrageOpportunities.buyDex, opportunity.buyDex),
+            eq(arbitrageOpportunities.sellDex, opportunity.sellDex)
+          )
+        );
+
+      if (existing.length > 0) {
+        // Update existing opportunity to maintain ID consistency
+        const [result] = await db
+          .update(arbitrageOpportunities)
+          .set({
+            ...opportunity,
+            lastUpdated: new Date()
+          })
+          .where(eq(arbitrageOpportunities.id, existing[0].id))
+          .returning();
+        return result;
+      } else {
+        // Create new opportunity
+        const [result] = await db
+          .insert(arbitrageOpportunities)
+          .values({
+            ...opportunity,
+            lastUpdated: new Date()
+          })
+          .returning();
+        return result;
+      }
+    } catch (error) {
+      // Fallback to simple insert if upsert fails
+      const [result] = await db.insert(arbitrageOpportunities).values(opportunity).returning();
+      return result;
+    }
   }
 
   async updateArbitrageOpportunity(id: number, updates: Partial<InsertArbitrageOpportunity>): Promise<ArbitrageOpportunity | undefined> {
