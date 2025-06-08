@@ -11,9 +11,12 @@ export async function apiRequest(
   url: string,
   options?: RequestInit,
 ): Promise<any> {
+  const body = options?.body ? JSON.stringify(options.body) : undefined;
+  
   const res = await fetch(url, {
     credentials: "include",
     ...options,
+    body,
     headers: {
       "Content-Type": "application/json",
       ...options?.headers,
