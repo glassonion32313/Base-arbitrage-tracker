@@ -77,18 +77,60 @@ export default function TradeModal({ opportunity, isOpen, onClose }: TradeModalP
         return;
       }
 
+      // Get contract info and gas prices for real execution
+      const [contractResponse, gasResponse] = await Promise.all([
+        fetch('/api/contract/address'),
+        fetch('/api/contract/gas')
+      ]);
+      
+      const contractInfo = await contractResponse.json();
+      const gasPrices = await gasResponse.json();
+
+      // Estimate profit using deployed ArbitrageBot contract
+      const estimateResponse = await fetch('/api/contract/estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tokenA: opportunity.tokenA,
+          tokenB: opportunity.tokenB,
+          amountIn: amount,
+          buyDex: opportunity.buyDex,
+          sellDex: opportunity.sellDex,
+          minProfit: "10"
+        })
+      });
+
+      if (!estimateResponse.ok) {
+        throw new Error('Contract profit estimation failed');
+      }
+
+      // Prepare transaction for ArbitrageBot contract execution
+      const txParams = {
+        to: contractInfo.address,
+        from: accounts[0],
+        value: '0x0', // No ETH needed for flashloan arbitrage
+        gas: '0x' + (300000).toString(16), // 300k gas limit
+        gasPrice: '0x' + Math.floor(parseFloat(gasPrices.fast) * 1e9).toString(16)
+      };
+
+      // Execute transaction via MetaMask
+      const txHash = await (window as any).ethereum.request({
+        method: 'eth_sendTransaction',
+        params: [txParams],
+      });
+
       const tradeData = {
         userAddress: accounts[0],
         tokenPair: opportunity.tokenPair,
         buyDex: opportunity.buyDex,
         sellDex: opportunity.sellDex,
         amountIn: amount,
-        expectedProfit: opportunity.estimatedProfit,
-        gasCost: useFlashloan ? flashloanGas : opportunity.gasCost,
+        expectedProfit: opportunity.netProfit,
+        gasCost: Math.floor(parseFloat(gasPrices.fast) * 300000).toString(),
         flashloanAmount: useFlashloan ? amount : null,
         flashloanFee: useFlashloan ? flashloanFee : null,
         isFlashloan: useFlashloan,
-        txHash: `0x${Math.random().toString(16).substr(2, 64)}`, // Mock tx hash
+        txHash: txHash,
         status: "pending",
       };
 
