@@ -62,14 +62,26 @@ export default function ArbitrageTable({ opportunities, isLoading, onRefresh }: 
 
   // Auto-execute arbitrage mutation - REAL BLOCKCHAIN TRANSACTIONS
   const executeArbitrageMutation = useMutation({
-    mutationFn: async ({ opportunityId, useFlashloan, privateKey }: { opportunityId: number; useFlashloan: boolean; privateKey: string }) => {
-      return await apiRequest(`/api/arbitrage/execute-auto`, {
+    mutationFn: async ({ opportunityId, useFlashloan }: { opportunityId: number; useFlashloan: boolean }) => {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+      
+      const response = await fetch('/api/arbitrage/execute-auto', {
         method: 'POST',
-        body: JSON.stringify({ opportunityId, useFlashloan, privateKey }),
         headers: {
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ opportunityId, useFlashloan })
       });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return await response.json();
     },
     onSuccess: (data, { opportunityId }) => {
       toast({
@@ -99,25 +111,12 @@ export default function ArbitrageTable({ opportunities, isLoading, onRefresh }: 
   });
 
   const handleExecuteArbitrage = async (opportunity: ArbitrageOpportunity) => {
-    // Prompt for private key for real blockchain transaction
-    const privateKey = prompt(
-      `⚠️ REAL BLOCKCHAIN TRANSACTION\n\nThis will execute an actual arbitrage transaction on Base network.\n\nOpportunity: ${opportunity.tokenPair}\nProfit: $${opportunity.estimatedProfit}\nBuy: ${opportunity.buyDex} → Sell: ${opportunity.sellDex}\n\nEnter your private key (starts with 0x):`,
-      ""
-    );
-
-    if (!privateKey) {
+    // Check authentication
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
       toast({
-        title: "Transaction Cancelled",
-        description: "Private key required for blockchain execution",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!privateKey.startsWith('0x') || privateKey.length !== 66) {
-      toast({
-        title: "Invalid Private Key",
-        description: "Private key must start with 0x and be 64 characters long",
+        title: "Authentication Required",
+        description: "Please log in to execute trades",
         variant: "destructive",
       });
       return;
@@ -126,8 +125,7 @@ export default function ArbitrageTable({ opportunities, isLoading, onRefresh }: 
     setExecutingOpportunities(prev => new Set(prev).add(opportunity.id));
     executeArbitrageMutation.mutate({
       opportunityId: opportunity.id,
-      useFlashloan: flashloanEnabled,
-      privateKey
+      useFlashloan: flashloanEnabled
     });
   };
 
