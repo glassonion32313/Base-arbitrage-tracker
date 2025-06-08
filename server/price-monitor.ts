@@ -45,6 +45,31 @@ export class PriceMonitor {
         name: "BaseSwap",
         enabled: true,
         fetchPrices: this.fetchBaseSwapPrices.bind(this)
+      },
+      {
+        name: "Aerodrome",
+        enabled: true,
+        fetchPrices: this.fetchAerodromePrices.bind(this)
+      },
+      {
+        name: "Velodrome",
+        enabled: true,
+        fetchPrices: this.fetchVelodromePrices.bind(this)
+      },
+      {
+        name: "PancakeSwap",
+        enabled: true,
+        fetchPrices: this.fetchPancakeSwapPrices.bind(this)
+      },
+      {
+        name: "Curve",
+        enabled: true,
+        fetchPrices: this.fetchCurvePrices.bind(this)
+      },
+      {
+        name: "Maverick",
+        enabled: true,
+        fetchPrices: this.fetchMaverickPrices.bind(this)
       }
     ];
   }
@@ -188,14 +213,29 @@ export class PriceMonitor {
     
     if (lowestPrice.dex === highestPrice.dex) return opportunities;
     
-    // Calculate profit potential
+    // Calculate profit potential with DEX fees
     const priceDiff = highestPrice.price - lowestPrice.price;
     const priceDiffPercent = (priceDiff / lowestPrice.price) * 100;
+    
+    // DEX trading fees (typical fees for each exchange)
+    const dexFees = this.getDexFees(lowestPrice.dex, highestPrice.dex);
+    const buyDexFee = dexFees.buyFee;
+    const sellDexFee = dexFees.sellFee;
     
     // Estimate gas cost (Base network average)
     const gasCost = this.estimateGasCost();
     const tradeAmount = 1000; // $1000 trade size for calculation
-    const estimatedProfit = (priceDiff / lowestPrice.price) * tradeAmount;
+    
+    // Calculate net profit accounting for all fees
+    const buyAmount = tradeAmount / lowestPrice.price;
+    const buyFeeAmount = tradeAmount * buyDexFee;
+    const actualBuyAmount = buyAmount * (1 - buyDexFee);
+    
+    const sellValue = actualBuyAmount * highestPrice.price;
+    const sellFeeAmount = sellValue * sellDexFee;
+    const actualSellValue = sellValue * (1 - sellDexFee);
+    
+    const estimatedProfit = actualSellValue - tradeAmount;
     const netProfit = estimatedProfit - gasCost;
     
     // Only create opportunity if profitable
@@ -256,6 +296,29 @@ export class PriceMonitor {
     };
     
     return addresses[symbol] || '0x0000000000000000000000000000000000000000';
+  }
+
+  private getDexFees(buyDex: string, sellDex: string): { buyFee: number; sellFee: number } {
+    const dexFeeMap: Record<string, number> = {
+      'Uniswap V3': 0.003,     // 0.3% fee
+      'Uniswap V2': 0.003,     // 0.3% fee
+      'SushiSwap': 0.003,      // 0.3% fee
+      'BaseSwap': 0.0025,      // 0.25% fee
+      'Aerodrome': 0.002,      // 0.2% fee (variable)
+      'PancakeSwap': 0.0025,   // 0.25% fee
+      'Curve': 0.0004,         // 0.04% fee (stablecoin pairs)
+      'Balancer': 0.001,       // 0.1-1% fee (variable)
+      'Maverick': 0.001,       // 0.1% fee
+      'Velodrome': 0.002,      // 0.2% fee
+      'Alienbase': 0.003,      // 0.3% fee
+      'RocketSwap': 0.003,     // 0.3% fee
+      'Synthswap': 0.0025,     // 0.25% fee
+    };
+
+    return {
+      buyFee: dexFeeMap[buyDex] || 0.003,  // Default to 0.3%
+      sellFee: dexFeeMap[sellDex] || 0.003
+    };
   }
 
   private estimateGasCost(): number {
@@ -460,6 +523,46 @@ export class PriceMonitor {
     });
     
     return prices;
+  }
+
+  private async fetchAerodromePrices(): Promise<TokenPrice[]> {
+    return [
+      { symbol: 'WETH/USDC', address: '0x4200000000000000000000000000000000000006', price: 2660 + Math.random() * 90, dex: 'Aerodrome', timestamp: new Date() },
+      { symbol: 'WBTC/USDT', address: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA', price: 45200 + Math.random() * 1800, dex: 'Aerodrome', timestamp: new Date() },
+      { symbol: 'LINK/USDT', address: '0x88Fb150BDc53A65fe94Dea0c9BA0a6dAf8C6e196', price: 15.2 + Math.random() * 2.8, dex: 'Aerodrome', timestamp: new Date() }
+    ];
+  }
+
+  private async fetchVelodromePrices(): Promise<TokenPrice[]> {
+    return [
+      { symbol: 'WETH/USDC', address: '0x4200000000000000000000000000000000000006', price: 2648 + Math.random() * 102, dex: 'Velodrome', timestamp: new Date() },
+      { symbol: 'WBTC/USDT', address: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA', price: 44980 + Math.random() * 2020, dex: 'Velodrome', timestamp: new Date() },
+      { symbol: 'LINK/USDT', address: '0x88Fb150BDc53A65fe94Dea0c9BA0a6dAf8C6e196', price: 14.95 + Math.random() * 3.05, dex: 'Velodrome', timestamp: new Date() }
+    ];
+  }
+
+  private async fetchPancakeSwapPrices(): Promise<TokenPrice[]> {
+    return [
+      { symbol: 'WETH/USDC', address: '0x4200000000000000000000000000000000000006', price: 2652 + Math.random() * 98, dex: 'PancakeSwap', timestamp: new Date() },
+      { symbol: 'WBTC/USDT', address: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA', price: 45050 + Math.random() * 1950, dex: 'PancakeSwap', timestamp: new Date() },
+      { symbol: 'LINK/USDT', address: '0x88Fb150BDc53A65fe94Dea0c9BA0a6dAf8C6e196', price: 15.05 + Math.random() * 2.95, dex: 'PancakeSwap', timestamp: new Date() }
+    ];
+  }
+
+  private async fetchCurvePrices(): Promise<TokenPrice[]> {
+    return [
+      { symbol: 'WETH/USDC', address: '0x4200000000000000000000000000000000000006', price: 2658 + Math.random() * 92, dex: 'Curve', timestamp: new Date() },
+      { symbol: 'WBTC/USDT', address: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA', price: 45120 + Math.random() * 1880, dex: 'Curve', timestamp: new Date() },
+      { symbol: 'LINK/USDT', address: '0x88Fb150BDc53A65fe94Dea0c9BA0a6dAf8C6e196', price: 15.08 + Math.random() * 2.92, dex: 'Curve', timestamp: new Date() }
+    ];
+  }
+
+  private async fetchMaverickPrices(): Promise<TokenPrice[]> {
+    return [
+      { symbol: 'WETH/USDC', address: '0x4200000000000000000000000000000000000006', price: 2649 + Math.random() * 101, dex: 'Maverick', timestamp: new Date() },
+      { symbol: 'WBTC/USDT', address: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA', price: 44970 + Math.random() * 2030, dex: 'Maverick', timestamp: new Date() },
+      { symbol: 'LINK/USDT', address: '0x88Fb150BDc53A65fe94Dea0c9BA0a6dAf8C6e196', price: 14.92 + Math.random() * 3.08, dex: 'Maverick', timestamp: new Date() }
+    ];
   }
 
   isMonitoring(): boolean {
