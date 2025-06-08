@@ -75,59 +75,13 @@ export default function TradeModal({ opportunity, isOpen, onClose }: TradeModalP
   });
 
   const handleExecuteTrade = async () => {
-    try {
-      // Check if user is authenticated with stored private key
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        toast({
-          title: "Authentication required",
-          description: "Please log in to execute trades",
-          variant: "destructive",
-        });
-        return;
-      }
+    const tradeData = {
+      opportunityId: opportunity.id,
+      tradeAmount: amount,
+      maxSlippage: 2, // 2% default slippage
+    };
 
-      // Execute trade using stored private key via backend API
-      const response = await fetch('/api/trades/execute', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          opportunityId: opportunity.id,
-          tradeAmount: amount,
-          maxSlippage: 2, // 2% default slippage
-        })
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || 'Trade execution failed');
-      }
-
-      if (result.success) {
-        toast({
-          title: "Trade Executed Successfully!",
-          description: `Profit: $${result.actualProfit} | TX: ${result.txHash?.slice(0, 10)}...`,
-        });
-        
-        // Refresh opportunities and transactions
-        queryClient.invalidateQueries({ queryKey: ["/api/opportunities"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
-        onClose();
-      } else {
-        throw new Error(result.message || 'Trade execution failed');
-      }
-    } catch (error: any) {
-      console.error("Trade execution error:", error);
-      toast({
-        title: "Trade failed",
-        description: error.message || "An error occurred while executing the trade",
-        variant: "destructive",
-      });
-    }
+    executeTradeMutation.mutate(tradeData);
   };
 
   // Update flashloan calculations when amount or flashloan toggle changes
