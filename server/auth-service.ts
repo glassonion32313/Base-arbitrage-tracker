@@ -258,6 +258,14 @@ export class AuthService {
     await db.delete(userSessions)
       .where(eq(userSessions.expiresAt, new Date()));
   }
+
+  async getAllUsers(): Promise<AuthenticatedUser[]> {
+    const users = await db.select()
+      .from(userAccounts)
+      .where(eq(userAccounts.isActive, true));
+    
+    return users.map(user => this.formatUser(user));
+  }
 }
 
 export const authService = new AuthService();

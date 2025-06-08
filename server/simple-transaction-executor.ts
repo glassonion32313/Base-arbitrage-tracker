@@ -23,16 +23,16 @@ export class SimpleTransactionExecutor {
   }
 
   private createTransactionWallet(): ethers.Wallet {
-    // Use environment private key if available, otherwise create demo wallet
-    const privateKey = process.env.TRADING_PRIVATE_KEY || this.generateDemoPrivateKey();
+    // Use environment private key if available
+    const privateKey = process.env.TRADING_PRIVATE_KEY;
+    if (!privateKey) {
+      throw new Error('TRADING_PRIVATE_KEY environment variable required for real transactions');
+    }
     return new ethers.Wallet(privateKey, this.provider);
   }
 
-  private generateDemoPrivateKey(): string {
-    // Generate a deterministic private key for demo purposes
-    const seed = 'arbitrage-bot-demo-key-base-network';
-    const hash = ethers.keccak256(ethers.toUtf8Bytes(seed));
-    return hash;
+  setUserPrivateKey(privateKey: string): void {
+    this.wallet = new ethers.Wallet(privateKey, this.provider);
   }
 
   async executeRealTransaction(params: SimpleTransactionParams): Promise<string> {

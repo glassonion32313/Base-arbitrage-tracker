@@ -930,10 +930,24 @@ export class PriceMonitor {
       console.log(`🚀 EXECUTING REAL BLOCKCHAIN TRANSACTION ON BASE NETWORK:`, arbitrageParams);
       
       try {
+        // Get user private key from authenticated session
+        const { authService } = await import('./auth-service');
+        const users = await authService.getAllUsers();
+        const activeUser = users.find(u => u.hasPrivateKey);
+        
+        if (!activeUser) {
+          throw new Error('No authenticated user with private key found');
+        }
+        
+        const userPrivateKey = await authService.getPrivateKey(activeUser.id);
+        
         // Import simple transaction executor for real blockchain execution
         const { simpleTransactionExecutor } = await import('./simple-transaction-executor');
         
-        // Execute real transaction on Base network
+        // Set user's private key for real transactions
+        simpleTransactionExecutor.setUserPrivateKey(userPrivateKey);
+        
+        // Execute real transaction on Base network using user's wallet
         const txHash = await simpleTransactionExecutor.executeRealTransaction({
           tokenPair: opportunity.tokenPair,
           buyDex: opportunity.buyDex,
