@@ -173,10 +173,7 @@ export default function SimpleAuthHeader() {
                 ✕
               </Button>
             </div>
-            <div className="text-center p-8 bg-gray-50 rounded-lg">
-              <p className="text-gray-600 mb-4">Account management will be available soon</p>
-              <p className="text-sm text-gray-500">Private key management and wallet settings</p>
-            </div>
+            <SimpleAccountManager />
           </div>
         </div>
       )}
