@@ -27,7 +27,7 @@ export class PriceMonitor {
 
   // SAFETY PROTECTIONS
   private readonly MAX_TRADE_AMOUNT = 10000; // Maximum $10,000 per trade
-  private readonly MAX_DAILY_TRADES = 100; // Maximum 100 trades per day
+  private readonly MAX_DAILY_TRADES = 5; // Maximum 5 trades per day
   private readonly MAX_DAILY_LOSS = 5000; // Maximum $5,000 daily loss limit
   private readonly MIN_LIQUIDITY_THRESHOLD = 50000; // Minimum $50k liquidity
   private readonly MAX_SLIPPAGE = 0.05; // Maximum 5% slippage
@@ -957,7 +957,7 @@ export class PriceMonitor {
    Address: ${wallet.address}
    Balance: ${ethers.formatEther(balance)} ETH
    Network: Base Mainnet
-   Required: 0.001 ETH minimum
+   Required: 0.0005 ETH minimum
    
 📡 FUND THIS ADDRESS TO ENABLE REAL TRADING:
    Send ETH to: ${wallet.address}
@@ -965,7 +965,7 @@ export class PriceMonitor {
    Bridge: https://bridge.base.org/
         `);
         
-        if (balance < ethers.parseEther('0.001')) {
+        if (balance < ethers.parseEther('0.0005')) {
           throw new Error(`FUND WALLET: Send ETH to ${wallet.address} on Base network to enable real trades.`);
         }
 
