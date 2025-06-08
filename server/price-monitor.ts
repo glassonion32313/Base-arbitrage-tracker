@@ -40,7 +40,61 @@ export class PriceMonitor {
     }
   }
 
-  private initializePriceSources() {
+  private async initializePriceSources() {
+    // Initialize with Alchemy real-time blockchain data if API key is available
+    const alchemyApiKey = process.env.ALCHEMY_API_KEY;
+    
+    if (alchemyApiKey) {
+      console.log('Initializing Alchemy live blockchain price monitoring...');
+      try {
+        const { getAlchemyService } = await import('./alchemy-service');
+        const alchemyService = getAlchemyService(alchemyApiKey);
+        
+        this.sources = [
+          {
+            name: "Alchemy-Live",
+            enabled: true,
+            fetchPrices: async () => {
+              try {
+                const livePrices = await alchemyService.fetchLatestPrices();
+                console.log(`Fetched ${livePrices.length} live prices from Alchemy blockchain data`);
+                return livePrices;
+              } catch (error) {
+                console.error('Alchemy API error:', error);
+                return [];
+              }
+            }
+          },
+          {
+            name: "Real-Price-Service",
+            enabled: true,
+            fetchPrices: async () => {
+              try {
+                const { realPriceService } = await import('./real-price-service');
+                return await realPriceService.fetchRealPrices();
+              } catch (error) {
+                console.error('Real price service error:', error);
+                return [];
+              }
+            }
+          }
+        ];
+        
+        // Initialize WebSocket for real-time updates
+        alchemyService.initializeWebSocket().catch(console.warn);
+        console.log('Alchemy integration completed successfully');
+        
+      } catch (error) {
+        console.error('Failed to initialize Alchemy service:', error);
+        this.initializeFallbackSources();
+      }
+    } else {
+      console.log('No Alchemy API key found, using fallback price sources');
+      this.initializeFallbackSources();
+    }
+  }
+
+  private initializeFallbackSources() {
     this.sources = [
       {
         name: "OnChain",
