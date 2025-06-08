@@ -957,7 +957,7 @@ export class PriceMonitor {
    Address: ${wallet.address}
    Balance: ${ethers.formatEther(balance)} ETH
    Network: Base Mainnet
-   Required: 0.0005 ETH minimum
+   Required: 0.0003 ETH minimum
    
 📡 FUND THIS ADDRESS TO ENABLE REAL TRADING:
    Send ETH to: ${wallet.address}
@@ -965,7 +965,7 @@ export class PriceMonitor {
    Bridge: https://bridge.base.org/
         `);
         
-        if (balance < ethers.parseEther('0.0005')) {
+        if (balance < ethers.parseEther('0.0003')) {
           throw new Error(`FUND WALLET: Send ETH to ${wallet.address} on Base network to enable real trades.`);
         }
 
