@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { web3Service } from "@/lib/web3";
+import { web3Service } from "@/lib/web3-fixed";
 import { useToast } from "@/hooks/use-toast";
 
 export interface WalletState {
@@ -25,14 +25,14 @@ export function useWallet() {
     if (typeof window.ethereum === 'undefined') return;
 
     try {
-      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-      const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+      const account = await web3Service.getCurrentAccount();
+      const chainId = await web3Service.getChainId();
 
-      if (accounts.length > 0) {
-        const balance = await web3Service.getBalance(accounts[0]);
+      if (account) {
+        const balance = await web3Service.getBalance(account);
         setWalletState({
           isConnected: true,
-          address: accounts[0],
+          address: account,
           balance,
           chainId,
           isConnecting: false,
