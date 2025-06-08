@@ -5,8 +5,10 @@ import { priceMonitor } from "./price-monitor";
 import { insertArbitrageOpportunitySchema, insertTransactionSchema } from "@shared/schema";
 import { z } from "zod";
 
-// Contract service will be initialized later
-let contractService: any = null;
+import { getContractIntegration } from "./contract-integration";
+
+// Initialize contract integration
+const contractService = getContractIntegration();
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Get arbitrage opportunities with optional filters
@@ -264,12 +266,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const { tokenA, tokenB, amountIn, buyDex, sellDex, minProfit } = req.body;
-      const estimatedProfit = await contractService.estimateArbitrageProfit({
+      const estimatedProfit = await contractService.estimateProfit({
         tokenA, tokenB, amountIn, buyDex, sellDex, minProfit
       });
       res.json({ estimatedProfit });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: "Estimation failed" });
     }
   });
 
@@ -282,7 +284,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const gasPrices = await contractService.getCurrentGasPrice();
       res.json(gasPrices);
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: "Gas price fetch failed" });
     }
   });
 
