@@ -121,12 +121,20 @@ contract ArbitrageBot {
         _executeTrade(params.tokenB, params.tokenA, tokenBReceived, params.sellDex);
         
         uint256 finalBalance = IERC20(tokens[0]).balanceOf(address(this));
-        uint256 profit = finalBalance - initialBalance;
+        
+        // Safe profit calculation to prevent underflow
+        uint256 profit = 0;
+        if (finalBalance > initialBalance) {
+            profit = finalBalance - initialBalance;
+        }
         
         require(profit >= params.minProfit, "Insufficient profit");
         
-        // Repay flashloan
+        // Repay flashloan with safety checks
         uint256 repayAmount = amounts[0] + feeAmounts[0];
+        uint256 currentBalance = IERC20(tokens[0]).balanceOf(address(this));
+        
+        require(currentBalance >= repayAmount, "Insufficient balance for repayment");
         IERC20(tokens[0]).transfer(address(BALANCER_VAULT), repayAmount);
         
         emit ArbitrageExecuted(params.tokenA, params.tokenB, amounts[0], profit);
