@@ -24,16 +24,23 @@ export default function ArbitrageScanner() {
   });
   const { toast } = useToast();
 
-  const { data: opportunities = [], isLoading, refetch } = useQuery<any[]>({
+  // WebSocket connection for real-time opportunities
+  const { opportunities: wsOpportunities, newOpportunityCount, isConnected } = useWebSocketOpportunities();
+
+  // Use WebSocket data when available, fallback to HTTP for initial load
+  const { data: httpOpportunities = [], isLoading, refetch } = useQuery<any[]>({
     queryKey: ["/api/opportunities", filters.minProfit],
-    enabled: true,
-    refetchInterval: autoRefresh ? 30000 : false,
+    enabled: !isConnected, // Only use HTTP when WebSocket not connected
+    refetchInterval: false, // Disable polling in favor of WebSocket
   });
 
   const { data: stats } = useQuery<any>({
     queryKey: ["/api/stats"],
-    refetchInterval: autoRefresh ? 30000 : false,
+    refetchInterval: autoRefresh ? 60000 : false, // Reduce frequency
   });
+
+  // Combine WebSocket and HTTP data
+  const opportunities = isConnected && wsOpportunities.length > 0 ? wsOpportunities : httpOpportunities;
 
   const handleRefresh = async () => {
     await refetch();

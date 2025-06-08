@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Bell, BellOff, Settings, TrendingUp, DollarSign, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useWebSocket } from "@/hooks/use-websocket";
 
 interface NotificationSettings {
   enabled: boolean;

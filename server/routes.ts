@@ -296,6 +296,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const gasPrices = await contractService.getCurrentGasPrice();
+      
+      // Broadcast gas price update via WebSocket
+      broadcastToClients({
+        type: 'gas_update',
+        data: gasPrices,
+        timestamp: new Date()
+      });
+      
       res.json(gasPrices);
     } catch (error) {
       res.status(500).json({ error: "Gas price fetch failed" });
@@ -334,6 +342,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Export broadcast function for use by other modules
   (global as any).broadcastToClients = broadcastToClients;
+
+  // Set up periodic gas price updates via WebSocket (every 30 seconds)
+  setInterval(async () => {
+    if (contractService && wsConnections.size > 0) {
+      try {
+        const gasPrices = await contractService.getCurrentGasPrice();
+        broadcastToClients({
+          type: 'gas_update',
+          data: gasPrices,
+          timestamp: new Date()
+        });
+      } catch (error) {
+        console.error('Failed to broadcast gas prices:', error);
+      }
+    }
+  }, 30000);
+
+  // Set up periodic monitoring status updates via WebSocket
+  setInterval(() => {
+    if (wsConnections.size > 0) {
+      const status = priceMonitor.getStatus();
+      broadcastToClients({
+        type: 'monitor_status',
+        data: status,
+        timestamp: new Date()
+      });
+    }
+  }, 10000);
 
   return httpServer;
 }
