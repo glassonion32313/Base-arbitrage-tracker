@@ -3,8 +3,8 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from 'ws';
 import { storage } from "./storage";
 import { priceMonitor } from "./price-monitor";
-import { insertArbitrageOpportunitySchema, insertTransactionSchema, insertUserAccountSchema } from "@shared/schema";
-import { authService } from "./auth-service";
+import { insertArbitrageOpportunitySchema, insertTransactionSchema } from "@shared/schema";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 import { tradeExecutor } from "./trade-executor";
 import { autoTrader } from "./auto-trader";
 import { z } from "zod";
@@ -27,26 +27,20 @@ function broadcastToClients(data: any) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Authentication middleware
-  const requireAuth = async (req: any, res: any, next: any) => {
+  // Set up Replit Auth middleware
+  await setupAuth(app);
+
+  // Auth routes
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const token = req.headers.authorization?.replace('Bearer ', '');
-      
-      if (!token) {
-        return res.status(401).json({ message: 'Authorization token required' });
-      }
-
-      const user = await authService.validateToken(token);
-      if (!user) {
-        return res.status(401).json({ message: 'Invalid or expired token' });
-      }
-
-      req.user = user;
-      next();
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
     } catch (error) {
-      return res.status(401).json({ message: 'Authentication failed' });
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
     }
-  };
+  });
 
   // Get arbitrage opportunities with optional filters
   app.get("/api/opportunities", async (req, res) => {
@@ -166,37 +160,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Authentication routes
-  app.post("/api/auth/register", async (req, res) => {
-    try {
-      const { username, email, password, privateKey } = req.body;
-      
-      if (!username || !email || !password) {
-        return res.status(400).json({ message: 'Username, email, and password are required' });
-      }
-
-      const result = await authService.register({ username, email, password, privateKey });
-      res.json(result);
-    } catch (error: any) {
-      console.error('Registration error:', error);
-      res.status(400).json({ message: error.message || 'Registration failed' });
-    }
-  });
-
-  app.post("/api/auth/login", async (req, res) => {
-    try {
-      const { username, password } = req.body;
-      
-      if (!username || !password) {
-        return res.status(400).json({ message: 'Username and password are required' });
-      }
-
-      const result = await authService.login({ username, password });
-      res.json(result);
-    } catch (error: any) {
-      console.error('Login error:', error);
-      res.status(401).json({ message: error.message || 'Login failed' });
-    }
+  // Protected route example
+  app.get("/api/protected", isAuthenticated, async (req, res) => {
+    const userId = req.user?.claims?.sub;
+    res.json({ message: "Protected route accessed", userId });
   });
 
   // Start price monitoring
