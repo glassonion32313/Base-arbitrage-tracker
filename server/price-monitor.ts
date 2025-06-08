@@ -806,6 +806,9 @@ export class PriceMonitor {
   }
 
   private async autoExecuteProfitableOpportunities(opportunities: InsertArbitrageOpportunity[]): Promise<void> {
+    // EXECUTION DISABLED - System depleted funds
+    console.log("🛑 Auto-execution disabled - insufficient funds");
+    return;
     console.log(`🤖 AUTO-EXECUTION: Evaluating ${opportunities.length} opportunities for automatic execution`);
     
     // SAFETY CHECK 1: Emergency stop
