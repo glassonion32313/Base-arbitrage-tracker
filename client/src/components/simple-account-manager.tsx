@@ -187,7 +187,7 @@ export default function SimpleAccountManager() {
         <CardContent className="space-y-4">
           {user?.walletAddress && (
             <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between mb-3">
                 <div>
                   <Label className="text-sm font-medium text-green-800">Connected Wallet</Label>
                   <p className="text-sm font-mono text-green-700">{formatAddress(user.walletAddress)}</p>
@@ -201,6 +201,32 @@ export default function SimpleAccountManager() {
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
+              
+              {balance && (
+                <div className="pt-3 border-t border-green-200">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <Label className="text-xs text-green-600">ETH Balance</Label>
+                      <p className="font-mono text-green-800">{parseFloat(balance.eth).toFixed(4)} ETH</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-green-600">USD Value</Label>
+                      <p className="font-mono text-green-800">${balance.usd}</p>
+                    </div>
+                  </div>
+                  {parseFloat(balance.eth) < 0.01 && (
+                    <p className="text-xs text-yellow-600 mt-2">
+                      Low ETH balance. Add funds for gas fees.
+                    </p>
+                  )}
+                </div>
+              )}
+              
+              {isLoadingBalance && (
+                <div className="pt-3 border-t border-green-200">
+                  <p className="text-xs text-green-600">Loading balance...</p>
+                </div>
+              )}
             </div>
           )}
 
