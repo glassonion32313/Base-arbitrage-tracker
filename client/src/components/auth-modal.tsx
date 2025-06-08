@@ -90,14 +90,18 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Login form submitted with data:', loginData);
+    
     if (!loginData.username || !loginData.password) {
       toast({
-        title: "Missing Information",
+        title: "Missing Information", 
         description: "Please fill in all required fields",
         variant: "destructive",
       });
       return;
     }
+    
+    console.log('Attempting login with:', { username: loginData.username, password: '***' });
     loginMutation.mutate(loginData);
   };
 
