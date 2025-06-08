@@ -40,6 +40,7 @@ export interface IStorage {
   batchCreateArbitrageOpportunities(opportunities: InsertArbitrageOpportunity[]): Promise<ArbitrageOpportunity[]>;
   updateArbitrageOpportunity(id: number, updates: Partial<InsertArbitrageOpportunity>): Promise<ArbitrageOpportunity | undefined>;
   deleteArbitrageOpportunity(id: number): Promise<boolean>;
+  clearAllOpportunities(): Promise<number>;
   clearStaleOpportunities(olderThanMinutes: number): Promise<number>;
 
   // Transactions
