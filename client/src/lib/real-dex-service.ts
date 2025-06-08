@@ -101,6 +101,7 @@ export class RealDexService {
               opportunities.push({
                 id: 0, // Will be set by database
                 isActive: true,
+                isBeingTraded: false,
                 tokenPair: pair,
                 token0Symbol: lowest.token0,
                 token1Symbol: lowest.token1,

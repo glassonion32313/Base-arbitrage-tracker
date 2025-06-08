@@ -32,44 +32,9 @@ export class PriceMonitor {
   private initializePriceSources() {
     this.sources = [
       {
-        name: "Uniswap V3",
+        name: "OnChain",
         enabled: true,
-        fetchPrices: this.fetchUniswapPrices.bind(this)
-      },
-      {
-        name: "SushiSwap", 
-        enabled: true,
-        fetchPrices: this.fetchSushiSwapPrices.bind(this)
-      },
-      {
-        name: "BaseSwap",
-        enabled: true,
-        fetchPrices: this.fetchBaseSwapPrices.bind(this)
-      },
-      {
-        name: "Aerodrome",
-        enabled: true,
-        fetchPrices: this.fetchAerodromePrices.bind(this)
-      },
-      {
-        name: "Velodrome",
-        enabled: true,
-        fetchPrices: this.fetchVelodromePrices.bind(this)
-      },
-      {
-        name: "PancakeSwap",
-        enabled: true,
-        fetchPrices: this.fetchPancakeSwapPrices.bind(this)
-      },
-      {
-        name: "Curve",
-        enabled: true,
-        fetchPrices: this.fetchCurvePrices.bind(this)
-      },
-      {
-        name: "Maverick",
-        enabled: true,
-        fetchPrices: this.fetchMaverickPrices.bind(this)
+        fetchPrices: this.fetchOnChainPrices.bind(this)
       }
     ];
   }
@@ -460,6 +425,16 @@ export class PriceMonitor {
   private getBackupPrices(): any {
     // Backup price oracle when primary fails
     return this.getCurrentMarketPrices();
+  }
+
+  private async fetchOnChainPrices(): Promise<TokenPrice[]> {
+    try {
+      const { onChainPriceService } = await import('./on-chain-price-service');
+      return await onChainPriceService.fetchOnChainPrices();
+    } catch (error) {
+      console.error('Failed to fetch on-chain prices:', error);
+      return [];
+    }
   }
 
   private async fetchUniswapPrices(): Promise<TokenPrice[]> {
