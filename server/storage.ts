@@ -3,6 +3,9 @@ import {
   transactions, 
   dexes, 
   settings,
+  arbitrageHistory,
+  dailyStats,
+  tokenPairStats,
   type ArbitrageOpportunity, 
   type InsertArbitrageOpportunity,
   type Transaction,
@@ -10,7 +13,13 @@ import {
   type Dex,
   type InsertDex,
   type Setting,
-  type InsertSetting
+  type InsertSetting,
+  type ArbitrageHistory,
+  type InsertArbitrageHistory,
+  type DailyStats,
+  type InsertDailyStats,
+  type TokenPairStats,
+  type InsertTokenPairStats
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lt, desc } from "drizzle-orm";
@@ -58,6 +67,39 @@ export interface IStorage {
     avgGasFee: number;
     successRate: number;
     volume24h: number;
+  }>;
+
+  // Historical arbitrage data
+  getArbitrageHistory(filters?: {
+    userId?: number;
+    status?: string;
+    tokenPair?: string;
+    limit?: number;
+    offset?: number;
+    dateFrom?: Date;
+    dateTo?: Date;
+  }): Promise<ArbitrageHistory[]>;
+  createArbitrageHistory(history: InsertArbitrageHistory): Promise<ArbitrageHistory>;
+  updateArbitrageHistory(id: number, updates: Partial<InsertArbitrageHistory>): Promise<ArbitrageHistory | undefined>;
+
+  // Analytics
+  getDailyStats(dateFrom?: Date, dateTo?: Date): Promise<DailyStats[]>;
+  updateDailyStats(date: string, stats: Partial<InsertDailyStats>): Promise<DailyStats>;
+  getTokenPairStats(limit?: number): Promise<TokenPairStats[]>;
+  updateTokenPairStats(tokenPair: string, stats: Partial<InsertTokenPairStats>): Promise<TokenPairStats>;
+  
+  // Advanced analytics
+  getPerformanceMetrics(userId?: number, days?: number): Promise<{
+    totalTrades: number;
+    successfulTrades: number;
+    totalVolume: string;
+    totalProfit: string;
+    avgProfit: string;
+    bestTrade: string;
+    successRate: number;
+    profitByDay: Array<{ date: string; profit: string; trades: number }>;
+    profitByTokenPair: Array<{ tokenPair: string; profit: string; trades: number }>;
+    profitByDex: Array<{ dex: string; profit: string; trades: number }>;
   }>;
 }
 

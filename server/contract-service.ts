@@ -29,9 +29,15 @@ export class ContractService {
   
   // Base network DEX router addresses
   private readonly DEX_ROUTERS = {
+    'Uniswap': '0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24',
     'Uniswap V3': '0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24',
     'SushiSwap': '0x6BDED42c6DA8FBf0d2bA55B2fa120C5e0c8D7891',
-    'BaseSwap': '0x327Df1E6de05895d2ab08513aaDD9313Fe505d86'
+    'BaseSwap': '0x327Df1E6de05895d2ab08513aaDD9313Fe505d86',
+    'Aerodrome': '0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43',
+    'Velodrome': '0xa062aE8A9c5e11aaA026fc2670B0D65cCc8B2858',
+    'PancakeSwap': '0x02a84c1b3BBD7401a5f7fa98a384EBC70bB5749E',
+    'Curve': '0x8AE125E8653821E851F12A49F7765db9a9ce7384',
+    'Maverick': '0x39E098A153Ad69834a9Dac32f0FCa92066aD03f4'
   };
 
   private readonly TOKEN_ADDRESSES = {
