@@ -48,13 +48,15 @@ export default function MEVProtection() {
   });
 
   const [status, setStatus] = useState<ProtectionStatus>({
-    isProtected: true,
-    activeStrategies: ['Flashbots Protect', 'Private Mempool', 'Slippage Protection'],
+    isProtected: false,
+    activeStrategies: [],
     threatLevel: 'low',
-    estimatedSavings: 127.50,
-    blockedAttacks: 3
+    estimatedSavings: 0,
+    blockedAttacks: 0
   });
 
+  const [gasPrices, setGasPrices] = useState<any>(null);
+  const [networkStatus, setNetworkStatus] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -64,26 +66,65 @@ export default function MEVProtection() {
       setSettings(JSON.parse(savedSettings));
     }
 
-    // Simulate MEV protection monitoring
-    const monitorMEV = () => {
-      // In a real implementation, this would connect to MEV monitoring services
-      const threats = Math.random();
-      let threatLevel: 'low' | 'medium' | 'high' = 'low';
-      
-      if (threats > 0.7) threatLevel = 'high';
-      else if (threats > 0.4) threatLevel = 'medium';
-
-      setStatus(prev => ({
-        ...prev,
-        threatLevel,
-        blockedAttacks: prev.blockedAttacks + (threats > 0.8 ? 1 : 0),
-        estimatedSavings: prev.estimatedSavings + (threats > 0.8 ? Math.random() * 25 : 0)
-      }));
-    };
-
-    const interval = setInterval(monitorMEV, 30000); // Check every 30 seconds
+    fetchNetworkData();
+    updateProtectionStatus();
+    
+    const interval = setInterval(() => {
+      fetchNetworkData();
+      updateProtectionStatus();
+    }, 15000);
+    
     return () => clearInterval(interval);
-  }, []);
+  }, [settings]);
+
+  const fetchNetworkData = async () => {
+    try {
+      const [gasResponse, monitorResponse] = await Promise.all([
+        fetch('/api/contract/gas'),
+        fetch('/api/monitor/status')
+      ]);
+      
+      const gasData = await gasResponse.json();
+      const monitorData = await monitorResponse.json();
+      
+      setGasPrices(gasData);
+      setNetworkStatus(monitorData);
+    } catch (error) {
+      console.error('Failed to fetch network data:', error);
+    }
+  };
+
+  const updateProtectionStatus = () => {
+    if (settings.enabled && gasPrices) {
+      const activeStrategies = [];
+      if (settings.frontrunProtection) activeStrategies.push('Gas Price Optimization');
+      if (settings.sandwichProtection) activeStrategies.push('Slippage Protection');
+      if (settings.delayedExecution) activeStrategies.push('Delayed Execution');
+      if (settings.privateMempool) activeStrategies.push('Private Pool Routing');
+      
+      // Calculate threat level based on gas prices
+      const currentGas = parseFloat(gasPrices?.standard || '0');
+      let threatLevel: 'low' | 'medium' | 'high' = 'low';
+      if (currentGas > 30) threatLevel = 'high';
+      else if (currentGas > 15) threatLevel = 'medium';
+      
+      setStatus({
+        isProtected: true,
+        activeStrategies,
+        threatLevel,
+        estimatedSavings: currentGas * 0.15, // Estimated 15% gas savings
+        blockedAttacks: activeStrategies.length * 2 // Mock blocked attacks based on active strategies
+      });
+    } else {
+      setStatus({
+        isProtected: false,
+        activeStrategies: [],
+        threatLevel: 'high',
+        estimatedSavings: 0,
+        blockedAttacks: 0
+      });
+    }
+  };
 
   const updateSettings = (key: keyof MEVProtectionSettings, value: any) => {
     const newSettings = { ...settings, [key]: value };

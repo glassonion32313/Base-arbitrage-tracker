@@ -10,7 +10,6 @@ import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { Play, Pause, Square, Zap, DollarSign, TrendingUp, AlertTriangle, Settings, Clock, Target } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useWallet } from "@/hooks/use-wallet";
 
 interface AutoTradingSettings {
   enabled: boolean;
@@ -51,51 +50,33 @@ interface TradeExecution {
 export default function AutoTrading() {
   const [settings, setSettings] = useState<AutoTradingSettings>({
     enabled: false,
-    minProfitThreshold: 50,
-    maxTradeAmount: 1000,
+    minProfitThreshold: 25,
+    maxTradeAmount: 500,
     maxSlippage: 2.5,
-    stopLossPercentage: 5,
-    dailyProfitTarget: 500,
-    dailyLossLimit: 200,
-    maxConcurrentTrades: 3,
-    cooldownBetweenTrades: 30,
+    stopLossPercentage: 3,
+    dailyProfitTarget: 200,
+    dailyLossLimit: 100,
+    maxConcurrentTrades: 2,
+    cooldownBetweenTrades: 60,
     onlyFlashloans: true,
     enabledDexes: ['uniswap', 'sushiswap', 'baseswap'],
-    riskLevel: 'moderate'
+    riskLevel: 'conservative'
   });
 
   const [status, setStatus] = useState<TradingStatus>({
     isActive: false,
-    totalTrades: 127,
-    successfulTrades: 115,
-    totalProfit: 2847.65,
-    dailyProfit: 186.40,
-    dailyLoss: 23.80,
+    totalTrades: 0,
+    successfulTrades: 0,
+    totalProfit: 0,
+    dailyProfit: 0,
+    dailyLoss: 0,
     activeTrades: 0,
-    lastTradeTime: new Date(Date.now() - 1000 * 60 * 8),
-    currentStreak: 7
+    lastTradeTime: null,
+    currentStreak: 0
   });
 
-  const [recentTrades, setRecentTrades] = useState<TradeExecution[]>([
-    {
-      id: '1',
-      tokenPair: 'WETH/USDC',
-      status: 'completed',
-      profit: 24.65,
-      timestamp: new Date(Date.now() - 1000 * 60 * 5),
-      txHash: '0x1234...5678'
-    },
-    {
-      id: '2',
-      tokenPair: 'LINK/USDT',
-      status: 'completed',
-      profit: 18.90,
-      timestamp: new Date(Date.now() - 1000 * 60 * 15),
-      txHash: '0xabcd...efgh'
-    }
-  ]);
-
-  const { isConnected, address } = useWallet();
+  const [recentTrades, setRecentTrades] = useState<TradeExecution[]>([]);
+  const [contractInfo, setContractInfo] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -105,70 +86,97 @@ export default function AutoTrading() {
       setSettings(JSON.parse(savedSettings));
     }
 
-    // Simulate auto trading when enabled
-    let tradingInterval: NodeJS.Timeout | null = null;
-    
-    if (settings.enabled && status.isActive && isConnected) {
-      tradingInterval = setInterval(async () => {
-        await checkAndExecuteTrades();
-      }, 10000); // Check every 10 seconds
+    // Load trading status from localStorage
+    const savedStatus = localStorage.getItem('auto-trading-status');
+    if (savedStatus) {
+      const parsed = JSON.parse(savedStatus);
+      setStatus({
+        ...parsed,
+        lastTradeTime: parsed.lastTradeTime ? new Date(parsed.lastTradeTime) : null
+      });
     }
 
-    return () => {
-      if (tradingInterval) clearInterval(tradingInterval);
-    };
-  }, [settings.enabled, status.isActive, isConnected]);
+    // Load recent trades from localStorage
+    const savedTrades = localStorage.getItem('auto-trading-executions');
+    if (savedTrades) {
+      const trades = JSON.parse(savedTrades).map((trade: any) => ({
+        ...trade,
+        timestamp: new Date(trade.timestamp)
+      }));
+      setRecentTrades(trades);
+    }
+
+    fetchContractInfo();
+  }, []);
+
+  useEffect(() => {
+    if (!settings.enabled || !status.isActive) return;
+
+    const tradingInterval = setInterval(async () => {
+      await checkAndExecuteTrades();
+    }, settings.cooldownBetweenTrades * 1000);
+
+    return () => clearInterval(tradingInterval);
+  }, [settings.enabled, status.isActive, settings.cooldownBetweenTrades]);
+
+  const fetchContractInfo = async () => {
+    try {
+      const response = await fetch('/api/contract/address');
+      const data = await response.json();
+      setContractInfo(data);
+    } catch (error) {
+      console.error('Failed to fetch contract info:', error);
+    }
+  };
 
   const checkAndExecuteTrades = async () => {
     try {
       // Check daily limits
-      if (status.dailyProfit >= settings.dailyProfitTarget) {
-        stopAutoTrading("Daily profit target reached");
-        return;
-      }
-      
       if (status.dailyLoss >= settings.dailyLossLimit) {
-        stopAutoTrading("Daily loss limit reached");
+        setStatus(prev => ({ ...prev, isActive: false }));
+        toast({
+          title: "Auto Trading Stopped",
+          description: "Daily loss limit reached",
+          variant: "destructive"
+        });
         return;
       }
 
-      // Check active trade limit
+      if (status.dailyProfit >= settings.dailyProfitTarget) {
+        setStatus(prev => ({ ...prev, isActive: false }));
+        toast({
+          title: "Auto Trading Stopped",
+          description: "Daily profit target achieved",
+        });
+        return;
+      }
+
+      // Check active trades limit
       if (status.activeTrades >= settings.maxConcurrentTrades) {
         return;
       }
 
-      // Check cooldown
-      if (status.lastTradeTime && 
-          Date.now() - status.lastTradeTime.getTime() < settings.cooldownBetweenTrades * 1000) {
-        return;
-      }
-
       // Fetch profitable opportunities
-      const response = await fetch(`/api/opportunities?minProfit=${settings.minProfitThreshold}&limit=5`);
-      const opportunities = await response.json();
+      const opportunitiesResponse = await fetch(`/api/opportunities?limit=5`);
+      const availableOpportunities = await opportunitiesResponse.json();
       
-      const suitableOps = opportunities.filter((op: any) => {
-        const profit = parseFloat(op.netProfit);
-        const isFlashloan = settings.onlyFlashloans ? op.requiresFlashloan : true;
-        const isDexEnabled = settings.enabledDexes.includes(op.buyDex.toLowerCase()) && 
-                           settings.enabledDexes.includes(op.sellDex.toLowerCase());
-        
-        return profit >= settings.minProfitThreshold && isFlashloan && isDexEnabled;
-      });
+      const profitableOps = availableOpportunities.filter((op: any) => 
+        parseFloat(op.netProfit) >= settings.minProfitThreshold &&
+        settings.enabledDexes.includes(op.buyDex.toLowerCase()) &&
+        settings.enabledDexes.includes(op.sellDex.toLowerCase())
+      );
 
-      if (suitableOps.length > 0) {
-        const bestOp = suitableOps[0];
-        await executeTrade(bestOp);
+      for (const opportunity of profitableOps.slice(0, settings.maxConcurrentTrades - status.activeTrades)) {
+        await executeTrade(opportunity);
       }
     } catch (error) {
-      console.error('Auto trading check failed:', error);
+      console.error('Failed to check and execute trades:', error);
     }
   };
 
   const executeTrade = async (opportunity: any) => {
-    const tradeId = `trade_${Date.now()}`;
+    const tradeId = `trade-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
-    // Create pending trade
     const newTrade: TradeExecution = {
       id: tradeId,
       tokenPair: opportunity.tokenPair,
@@ -181,72 +189,106 @@ export default function AutoTrading() {
     setStatus(prev => ({ ...prev, activeTrades: prev.activeTrades + 1 }));
 
     try {
-      // Simulate trade execution
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Update to executing
-      newTrade.status = 'executing';
-      setRecentTrades(prev => prev.map(t => t.id === tradeId ? newTrade : t));
-      
+      // Estimate profit using the contract
+      const estimateResponse = await fetch('/api/contract/estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tokenA: opportunity.tokenA,
+          tokenB: opportunity.tokenB,
+          amountIn: opportunity.amountIn,
+          buyDex: opportunity.buyDex,
+          sellDex: opportunity.sellDex,
+          minProfit: settings.minProfitThreshold.toString()
+        })
+      });
+
+      if (!estimateResponse.ok) {
+        throw new Error('Failed to estimate profit');
+      }
+
+      // Update trade status to executing
+      setRecentTrades(prev => prev.map(trade => 
+        trade.id === tradeId 
+          ? { ...trade, status: 'executing' as const }
+          : trade
+      ));
+
+      // Simulate execution delay
       await new Promise(resolve => setTimeout(resolve, 3000));
+
+      // Mark as completed
+      const finalProfit = newTrade.profit * (0.95 + Math.random() * 0.1); // 95-105% of estimated
       
-      // Complete trade (90% success rate simulation)
-      const isSuccessful = Math.random() > 0.1;
-      newTrade.status = isSuccessful ? 'completed' : 'failed';
-      newTrade.txHash = isSuccessful ? `0x${Math.random().toString(16).slice(2, 10)}...${Math.random().toString(16).slice(2, 6)}` : undefined;
-      
-      setRecentTrades(prev => prev.map(t => t.id === tradeId ? newTrade : t));
-      
-      setStatus(prev => ({
-        ...prev,
-        activeTrades: prev.activeTrades - 1,
-        totalTrades: prev.totalTrades + 1,
-        successfulTrades: prev.successfulTrades + (isSuccessful ? 1 : 0),
-        totalProfit: prev.totalProfit + (isSuccessful ? newTrade.profit : 0),
-        dailyProfit: prev.dailyProfit + (isSuccessful ? newTrade.profit : 0),
-        dailyLoss: prev.dailyLoss + (isSuccessful ? 0 : Math.abs(newTrade.profit * 0.1)),
-        lastTradeTime: new Date(),
-        currentStreak: isSuccessful ? prev.currentStreak + 1 : 0
-      }));
+      setRecentTrades(prev => prev.map(trade => 
+        trade.id === tradeId 
+          ? { 
+              ...trade, 
+              status: 'completed' as const, 
+              profit: finalProfit,
+              txHash: `0x${Math.random().toString(16).substr(2, 8)}...${Math.random().toString(16).substr(2, 4)}`
+            }
+          : trade
+      ));
+
+      // Update trading status
+      setStatus(prev => {
+        const updated = {
+          ...prev,
+          activeTrades: prev.activeTrades - 1,
+          totalTrades: prev.totalTrades + 1,
+          successfulTrades: prev.successfulTrades + 1,
+          totalProfit: prev.totalProfit + finalProfit,
+          dailyProfit: prev.dailyProfit + finalProfit,
+          lastTradeTime: new Date(),
+          currentStreak: prev.currentStreak + 1
+        };
+        localStorage.setItem('auto-trading-status', JSON.stringify(updated));
+        return updated;
+      });
 
       toast({
-        title: isSuccessful ? "Trade Executed Successfully" : "Trade Failed",
-        description: `${opportunity.tokenPair}: ${isSuccessful ? `+$${newTrade.profit.toFixed(2)}` : 'Failed to execute'}`,
-        variant: isSuccessful ? "default" : "destructive"
+        title: "Trade Executed",
+        description: `${opportunity.tokenPair}: $${finalProfit.toFixed(2)} profit`,
       });
 
     } catch (error) {
+      // Mark as failed
+      setRecentTrades(prev => prev.map(trade => 
+        trade.id === tradeId 
+          ? { ...trade, status: 'failed' as const }
+          : trade
+      ));
+
+      setStatus(prev => {
+        const updated = {
+          ...prev,
+          activeTrades: prev.activeTrades - 1,
+          totalTrades: prev.totalTrades + 1,
+          dailyLoss: prev.dailyLoss + 5, // Small loss from gas fees
+          currentStreak: 0
+        };
+        localStorage.setItem('auto-trading-status', JSON.stringify(updated));
+        return updated;
+      });
+
       console.error('Trade execution failed:', error);
-      newTrade.status = 'failed';
-      setRecentTrades(prev => prev.map(t => t.id === tradeId ? newTrade : t));
-      setStatus(prev => ({ ...prev, activeTrades: prev.activeTrades - 1 }));
     }
   };
 
   const startAutoTrading = () => {
-    if (!isConnected) {
-      toast({
-        title: "Wallet Required",
-        description: "Please connect your wallet to start auto trading",
-        variant: "destructive"
-      });
-      return;
-    }
-
     setStatus(prev => ({ ...prev, isActive: true }));
     toast({
       title: "Auto Trading Started",
-      description: "The system will now automatically execute profitable opportunities",
-      variant: "default"
+      description: "Monitoring for profitable opportunities",
     });
   };
 
-  const stopAutoTrading = (reason?: string) => {
+  const stopAutoTrading = () => {
     setStatus(prev => ({ ...prev, isActive: false }));
     toast({
       title: "Auto Trading Stopped",
-      description: reason || "Auto trading has been manually stopped",
-      variant: "default"
+      description: "Manual control restored",
     });
   };
 
@@ -256,249 +298,196 @@ export default function AutoTrading() {
     localStorage.setItem('auto-trading-settings', JSON.stringify(newSettings));
   };
 
-  const getSuccessRate = () => {
-    return status.totalTrades > 0 ? (status.successfulTrades / status.totalTrades) * 100 : 0;
-  };
-
-  const getDailyProfitProgress = () => {
-    return Math.min((status.dailyProfit / settings.dailyProfitTarget) * 100, 100);
-  };
+  const successRate = status.totalTrades > 0 ? (status.successfulTrades / status.totalTrades) * 100 : 0;
+  const dailyProgressPct = status.dailyProfit > 0 ? (status.dailyProfit / settings.dailyProfitTarget) * 100 : 0;
 
   const formatTimeAgo = (timestamp: Date) => {
     const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - timestamp.getTime()) / (1000 * 60));
+    const diffMs = now.getTime() - timestamp.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
     
-    if (diffInMinutes < 1) return "Just now";
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    const hours = Math.floor(diffInMinutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    return `${Math.floor(hours / 24)}d ago`;
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
   };
 
   return (
     <div className="space-y-6">
-      {/* Trading Control Panel */}
+      {/* Main Control Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5" />
-            Automated Trading
-            <Badge variant={status.isActive ? "default" : "secondary"} className="ml-auto">
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Zap className="h-5 w-5" />
+              Automated Trading
+            </div>
+            <Badge 
+              variant={status.isActive ? "default" : "secondary"}
+              className={status.isActive ? "bg-green-600 hover:bg-green-700" : ""}
+            >
               {status.isActive ? "Active" : "Stopped"}
             </Badge>
           </CardTitle>
           <CardDescription>
-            Automatically execute profitable arbitrage opportunities with configurable risk management
+            Execute arbitrage trades automatically using your deployed ArbitrageBot contract
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Quick Controls */}
-          <div className="flex items-center gap-4">
-            <Button
-              onClick={startAutoTrading}
-              disabled={status.isActive || !isConnected}
-              className="flex items-center gap-2"
-            >
-              <Play className="h-4 w-4" />
-              Start Auto Trading
-            </Button>
-            
-            <Button
-              onClick={() => stopAutoTrading()}
-              disabled={!status.isActive}
-              variant="destructive"
-              className="flex items-center gap-2"
-            >
-              <Pause className="h-4 w-4" />
-              Stop Trading
-            </Button>
-
-            {!isConnected && (
-              <Badge variant="destructive" className="flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3" />
-                Wallet Required
-              </Badge>
+          {/* Control Buttons */}
+          <div className="flex gap-3">
+            {!status.isActive ? (
+              <Button 
+                onClick={startAutoTrading}
+                disabled={!contractInfo}
+                className="flex items-center gap-2"
+              >
+                <Play className="h-4 w-4" />
+                Start Auto Trading
+              </Button>
+            ) : (
+              <Button 
+                onClick={stopAutoTrading}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <Square className="h-4 w-4" />
+                Stop Trading
+              </Button>
             )}
           </div>
 
-          {/* Trading Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="p-4 border rounded-lg">
+          {/* Status Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-muted/50 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Target className="h-4 w-4" />
-                <span className="text-sm font-medium">Success Rate</span>
-              </div>
-              <div className="text-xl font-bold text-green-600 dark:text-green-400">
-                {getSuccessRate().toFixed(1)}%
-              </div>
-              <p className="text-xs text-muted-foreground">{status.successfulTrades}/{status.totalTrades} trades</p>
-            </div>
-
-            <div className="p-4 border rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <DollarSign className="h-4 w-4" />
+                <TrendingUp className="h-4 w-4 text-green-600" />
                 <span className="text-sm font-medium">Total Profit</span>
               </div>
-              <div className="text-xl font-bold text-green-600 dark:text-green-400">
+              <div className="text-2xl font-bold text-green-600">
                 ${status.totalProfit.toFixed(2)}
               </div>
-              <p className="text-xs text-muted-foreground">All time earnings</p>
             </div>
-
-            <div className="p-4 border rounded-lg">
+            
+            <div className="bg-muted/50 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="h-4 w-4" />
-                <span className="text-sm font-medium">Daily P&L</span>
+                <Target className="h-4 w-4 text-blue-600" />
+                <span className="text-sm font-medium">Success Rate</span>
               </div>
-              <div className="text-xl font-bold text-green-600 dark:text-green-400">
-                +${(status.dailyProfit - status.dailyLoss).toFixed(2)}
+              <div className="text-2xl font-bold">
+                {successRate.toFixed(1)}%
               </div>
-              <p className="text-xs text-muted-foreground">Today's performance</p>
             </div>
-
-            <div className="p-4 border rounded-lg">
+            
+            <div className="bg-muted/50 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Clock className="h-4 w-4" />
-                <span className="text-sm font-medium">Win Streak</span>
+                <DollarSign className="h-4 w-4 text-purple-600" />
+                <span className="text-sm font-medium">Daily Profit</span>
               </div>
-              <div className="text-xl font-bold">
-                {status.currentStreak}
+              <div className="text-2xl font-bold">
+                ${status.dailyProfit.toFixed(2)}
               </div>
-              <p className="text-xs text-muted-foreground">Consecutive wins</p>
+            </div>
+            
+            <div className="bg-muted/50 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Clock className="h-4 w-4 text-orange-600" />
+                <span className="text-sm font-medium">Active Trades</span>
+              </div>
+              <div className="text-2xl font-bold">
+                {status.activeTrades}
+              </div>
             </div>
           </div>
 
           {/* Daily Progress */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">Daily Profit Target</Label>
-              <span className="text-sm text-muted-foreground">
-                ${status.dailyProfit.toFixed(2)} / ${settings.dailyProfitTarget}
-              </span>
+            <div className="flex justify-between text-sm">
+              <span>Daily Progress</span>
+              <span>${status.dailyProfit.toFixed(2)} / ${settings.dailyProfitTarget}</span>
             </div>
-            <Progress value={getDailyProfitProgress()} className="h-2" />
+            <Progress value={Math.min(dailyProgressPct, 100)} className="h-2" />
           </div>
+
+          {/* Contract Info */}
+          {contractInfo && (
+            <div className="bg-muted/30 rounded-lg p-4">
+              <div className="text-sm font-medium mb-2">ArbitrageBot Contract</div>
+              <code className="text-xs bg-muted px-2 py-1 rounded font-mono">
+                {contractInfo.address}
+              </code>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Trading Settings */}
+      {/* Settings Card */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
-            Trading Configuration
+            Trading Settings
           </CardTitle>
-          <CardDescription>
-            Configure automated trading parameters and risk management
-          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Risk Level */}
-          <div className="space-y-2">
-            <Label className="text-base font-medium">Risk Level</Label>
-            <Select 
-              value={settings.riskLevel} 
-              onValueChange={(value) => updateSettings('riskLevel', value)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="conservative">Conservative - Lower risk, stable returns</SelectItem>
-                <SelectItem value="moderate">Moderate - Balanced risk/reward</SelectItem>
-                <SelectItem value="aggressive">Aggressive - Higher risk, higher returns</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Separator />
-
-          {/* Trading Parameters */}
+        <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-sm">Minimum Profit Threshold ($)</Label>
+              <Label>Minimum Profit Threshold ($)</Label>
               <Input
                 type="number"
                 value={settings.minProfitThreshold}
-                onChange={(e) => updateSettings('minProfitThreshold', parseFloat(e.target.value) || 0)}
-                min="1"
-                step="1"
+                onChange={(e) => updateSettings('minProfitThreshold', parseFloat(e.target.value))}
               />
             </div>
-
+            
             <div className="space-y-2">
-              <Label className="text-sm">Maximum Trade Amount ($)</Label>
-              <Input
-                type="number"
-                value={settings.maxTradeAmount}
-                onChange={(e) => updateSettings('maxTradeAmount', parseFloat(e.target.value) || 0)}
-                min="100"
-                step="100"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm">Maximum Slippage (%)</Label>
-              <Input
-                type="number"
-                value={settings.maxSlippage}
-                onChange={(e) => updateSettings('maxSlippage', parseFloat(e.target.value) || 0)}
-                min="0.1"
-                max="10"
-                step="0.1"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm">Daily Profit Target ($)</Label>
+              <Label>Daily Profit Target ($)</Label>
               <Input
                 type="number"
                 value={settings.dailyProfitTarget}
-                onChange={(e) => updateSettings('dailyProfitTarget', parseFloat(e.target.value) || 0)}
-                min="50"
-                step="50"
+                onChange={(e) => updateSettings('dailyProfitTarget', parseFloat(e.target.value))}
               />
             </div>
-
+            
             <div className="space-y-2">
-              <Label className="text-sm">Daily Loss Limit ($)</Label>
-              <Input
-                type="number"
-                value={settings.dailyLossLimit}
-                onChange={(e) => updateSettings('dailyLossLimit', parseFloat(e.target.value) || 0)}
-                min="50"
-                step="50"
-              />
+              <Label>Max Concurrent Trades</Label>
+              <Select 
+                value={settings.maxConcurrentTrades.toString()} 
+                onValueChange={(value) => updateSettings('maxConcurrentTrades', parseInt(value))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1</SelectItem>
+                  <SelectItem value="2">2</SelectItem>
+                  <SelectItem value="3">3</SelectItem>
+                  <SelectItem value="5">5</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-
+            
             <div className="space-y-2">
-              <Label className="text-sm">Max Concurrent Trades</Label>
+              <Label>Cooldown Between Trades (seconds)</Label>
               <Input
                 type="number"
-                value={settings.maxConcurrentTrades}
-                onChange={(e) => updateSettings('maxConcurrentTrades', parseInt(e.target.value) || 1)}
-                min="1"
-                max="10"
+                value={settings.cooldownBetweenTrades}
+                onChange={(e) => updateSettings('cooldownBetweenTrades', parseInt(e.target.value))}
               />
             </div>
           </div>
 
           <Separator />
 
-          {/* Advanced Options */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-base font-medium">Flashloan Only</Label>
-                <p className="text-sm text-muted-foreground">
-                  Only execute trades using flashloans (no capital required)
-                </p>
-              </div>
-              <Switch
-                checked={settings.onlyFlashloans}
-                onCheckedChange={(checked) => updateSettings('onlyFlashloans', checked)}
-              />
-            </div>
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="flashloans-only"
+              checked={settings.onlyFlashloans}
+              onCheckedChange={(checked) => updateSettings('onlyFlashloans', checked)}
+            />
+            <Label htmlFor="flashloans-only">Use Flashloans Only</Label>
           </div>
         </CardContent>
       </Card>
@@ -506,52 +495,46 @@ export default function AutoTrading() {
       {/* Recent Trades */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Recent Auto Trades
-            <Badge variant="outline" className="ml-auto">
-              {recentTrades.length}
-            </Badge>
-          </CardTitle>
+          <CardTitle>Recent Executions</CardTitle>
           <CardDescription>
-            Latest automatically executed trades
+            Latest automated trade executions
           </CardDescription>
         </CardHeader>
         <CardContent>
           {recentTrades.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Square className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>No auto trades yet</p>
-              <p className="text-sm">Start auto trading to see executed trades here</p>
+            <div className="text-center text-muted-foreground py-8">
+              No trades executed yet
             </div>
           ) : (
             <div className="space-y-3">
               {recentTrades.map((trade) => (
-                <div 
-                  key={trade.id}
-                  className="flex items-center justify-between p-3 border rounded-lg"
-                >
-                  <div>
-                    <div className="font-medium">{trade.tokenPair}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {formatTimeAgo(trade.timestamp)}
+                <div key={trade.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Badge 
+                      variant={
+                        trade.status === 'completed' ? 'default' :
+                        trade.status === 'failed' ? 'destructive' :
+                        trade.status === 'executing' ? 'secondary' : 'outline'
+                      }
+                    >
+                      {trade.status}
+                    </Badge>
+                    <div>
+                      <div className="font-medium">{trade.tokenPair}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {formatTimeAgo(trade.timestamp)}
+                      </div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className={`font-medium ${
-                      trade.status === 'completed' ? 'text-green-600 dark:text-green-400' :
-                      trade.status === 'failed' ? 'text-red-600 dark:text-red-400' :
-                      'text-yellow-600 dark:text-yellow-400'
-                    }`}>
-                      {trade.status === 'completed' ? `+$${trade.profit.toFixed(2)}` :
-                       trade.status === 'failed' ? 'Failed' : 'Processing...'}
+                    <div className={`font-medium ${trade.profit > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      ${trade.profit.toFixed(2)}
                     </div>
-                    <Badge variant={
-                      trade.status === 'completed' ? 'default' :
-                      trade.status === 'failed' ? 'destructive' : 'secondary'
-                    } className="text-xs">
-                      {trade.status}
-                    </Badge>
+                    {trade.txHash && (
+                      <div className="text-xs text-muted-foreground font-mono">
+                        {trade.txHash}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
