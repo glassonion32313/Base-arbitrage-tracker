@@ -12,7 +12,8 @@ import { EmergencyWithdrawal } from "@/components/emergency-withdrawal";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, TrendingUp, Activity, Bell, Shield, Zap } from "lucide-react";
+import { RefreshCw, TrendingUp, Activity, Bell, Shield, Zap, Code } from "lucide-react";
+import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useWebSocketOpportunities } from "@/hooks/use-websocket";
 

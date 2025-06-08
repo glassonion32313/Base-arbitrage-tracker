@@ -497,6 +497,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Simple contract arbitrage routes
+  app.post('/api/contract/estimate-profit', isAuthenticated, async (req: any, res) => {
+    try {
+      const { simpleContractExecutor } = await import('./simple-contract-executor');
+      const estimatedProfit = await simpleContractExecutor.estimateProfit(req.body);
+      
+      res.json({ 
+        success: true,
+        estimatedProfit: estimatedProfit
+      });
+    } catch (error: any) {
+      console.error('Profit estimation error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message || 'Profit estimation failed' 
+      });
+    }
+  });
+
+  app.post('/api/contract/execute-arbitrage', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const userAccount = await storage.getUser(userId);
+      
+      if (!userAccount?.encryptedPrivateKey) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'No private key found. Please add your private key in settings.' 
+        });
+      }
+
+      const privateKey = await authService.getPrivateKey(parseInt(userId));
+      const { simpleContractExecutor } = await import('./simple-contract-executor');
+      const txHash = await simpleContractExecutor.executeArbitrage(req.body, privateKey);
+      
+      res.json({ 
+        success: true,
+        txHash: txHash
+      });
+    } catch (error: any) {
+      console.error('Arbitrage execution error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message || 'Arbitrage execution failed' 
+      });
+    }
+  });
+
   // Set user private key for trading
   app.post('/api/trading/set-private-key', async (req, res) => {
     try {
