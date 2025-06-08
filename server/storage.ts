@@ -23,6 +23,7 @@ export interface IStorage {
     limit?: number;
     offset?: number;
   }): Promise<ArbitrageOpportunity[]>;
+  getArbitrageOpportunityById(id: number): Promise<ArbitrageOpportunity | undefined>;
   createArbitrageOpportunity(opportunity: InsertArbitrageOpportunity): Promise<ArbitrageOpportunity>;
   updateArbitrageOpportunity(id: number, updates: Partial<InsertArbitrageOpportunity>): Promise<ArbitrageOpportunity | undefined>;
   deleteArbitrageOpportunity(id: number): Promise<boolean>;
@@ -194,6 +195,19 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error('Failed to fetch opportunities:', error);
       return [];
+    }
+  }
+
+  async getArbitrageOpportunityById(id: number): Promise<ArbitrageOpportunity | undefined> {
+    try {
+      const [result] = await db
+        .select()
+        .from(arbitrageOpportunities)
+        .where(eq(arbitrageOpportunities.id, id));
+      return result;
+    } catch (error) {
+      console.error('Failed to get opportunity by ID:', error);
+      return undefined;
     }
   }
 
