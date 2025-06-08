@@ -12,6 +12,7 @@ export async function apiRequest(
   options?: RequestInit,
 ): Promise<any> {
   const body = options?.body ? JSON.stringify(options.body) : undefined;
+  const token = localStorage.getItem('auth_token');
   
   const res = await fetch(url, {
     credentials: "include",
@@ -19,6 +20,7 @@ export async function apiRequest(
     body,
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
   });
@@ -33,8 +35,14 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    const token = localStorage.getItem('auth_token');
+    
     const res = await fetch(queryKey[0] as string, {
       credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
