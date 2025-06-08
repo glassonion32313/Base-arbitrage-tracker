@@ -51,12 +51,24 @@ export default function NotificationCenter() {
       setSettings(JSON.parse(savedSettings));
     }
 
+    // Load recent alerts from localStorage
+    const savedAlerts = localStorage.getItem('arbitrage-alerts');
+    if (savedAlerts) {
+      const alerts = JSON.parse(savedAlerts).map((alert: any) => ({
+        ...alert,
+        timestamp: new Date(alert.timestamp)
+      }));
+      setRecentAlerts(alerts);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!settings.enabled) return;
+
     // Monitor for new opportunities and trigger alerts
     const checkForAlerts = async () => {
-      if (!settings.enabled) return;
-      
       try {
-        const response = await fetch('/api/opportunities?limit=5');
+        const response = await fetch('/api/opportunities?limit=10');
         const opportunities = await response.json();
         
         const profitableOps = opportunities.filter((op: any) => 
@@ -64,7 +76,7 @@ export default function NotificationCenter() {
         );
         
         profitableOps.forEach((op: any) => {
-          const alertId = `${op.tokenPair}-${op.buyDex}-${op.sellDex}`;
+          const alertId = `${op.tokenPair}-${op.buyDex}-${op.sellDex}-${op.id}`;
           const existingAlert = recentAlerts.find(alert => alert.id === alertId);
           
           if (!existingAlert) {
@@ -78,7 +90,11 @@ export default function NotificationCenter() {
             };
             
             triggerAlert(newAlert);
-            setRecentAlerts(prev => [newAlert, ...prev.slice(0, 9)]); // Keep last 10 alerts
+            setRecentAlerts(prev => {
+              const updated = [newAlert, ...prev.slice(0, 9)];
+              localStorage.setItem('arbitrage-alerts', JSON.stringify(updated));
+              return updated;
+            });
           }
         });
       } catch (error) {
