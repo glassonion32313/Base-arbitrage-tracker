@@ -398,6 +398,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/auth/balance", requireAuth, async (req: any, res) => {
+    try {
+      const balance = await tradeExecutor.getWalletBalance(req.user.id);
+      res.json(balance);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
   // Enhanced trade execution with validation
   app.post("/api/trades/execute", requireAuth, async (req: any, res) => {
     try {

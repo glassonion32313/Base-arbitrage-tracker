@@ -1,277 +1,214 @@
-import { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Progress } from "@/components/ui/progress";
-import { Loader2, AlertTriangle, Zap, Info, Wallet, ExternalLink } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { flashloanService } from "@/lib/flashloan-service";
-import type { ArbitrageOpportunity } from "@shared/schema";
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
+import { TrendingUp, DollarSign, Clock, Shield, AlertTriangle } from 'lucide-react';
 
 interface TradeModalProps {
-  opportunity: ArbitrageOpportunity;
   isOpen: boolean;
   onClose: () => void;
+  opportunity: any;
 }
 
-export default function TradeModal({ opportunity, isOpen, onClose }: TradeModalProps) {
-  const [amount, setAmount] = useState("1000");
-  const [useFlashloan, setUseFlashloan] = useState(true);
-  const [flashloanFee, setFlashloanFee] = useState("0");
-  const [flashloanGas, setFlashloanGas] = useState("0");
+export default function TradeModal({ isOpen, onClose, opportunity }: TradeModalProps) {
+  const [tradeAmount, setTradeAmount] = useState('100');
+  const [maxSlippage, setMaxSlippage] = useState('2');
+  const [isExecuting, setIsExecuting] = useState(false);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
-  const executeTradeMutation = useMutation({
-    mutationFn: async (tradeData: any) => {
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        throw new Error('Authentication required - please log in');
-      }
-      
+  if (!opportunity) return null;
+
+  const handleExecuteTrade = async () => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to execute trades",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsExecuting(true);
+    try {
       const response = await fetch('/api/trades/execute', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(tradeData)
+        body: JSON.stringify({
+          opportunityId: opportunity.id,
+          tradeAmount: tradeAmount,
+          maxSlippage: parseFloat(maxSlippage)
+        })
       });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Trade execution failed');
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        toast({
+          title: "Trade Executed Successfully",
+          description: `Transaction Hash: ${result.txHash?.slice(0, 10)}...`,
+        });
+        onClose();
+      } else {
+        toast({
+          title: "Trade Failed",
+          description: result.message || "Trade execution failed",
+          variant: "destructive",
+        });
       }
-      
-      return await response.json();
-    },
-    onSuccess: (data) => {
+    } catch (error: any) {
       toast({
-        title: "Trade Executed Successfully!",
-        description: `TX Hash: ${data.txHash?.slice(0, 10)}... | Profit: $${data.actualProfit || 'calculating'}`,
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/opportunities"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
-      onClose();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Trade Failed",
-        description: error.message || "Failed to execute arbitrage trade",
+        title: "Execution Error",
+        description: error.message || "Failed to execute trade",
         variant: "destructive",
       });
-    },
-  });
-
-  const handleExecuteTrade = async () => {
-    const tradeData = {
-      opportunityId: opportunity.id,
-      tradeAmount: amount,
-      maxSlippage: 2, // 2% default slippage
-    };
-
-    executeTradeMutation.mutate(tradeData);
-  };
-
-  // Update flashloan calculations when amount or flashloan toggle changes
-  const updateFlashloanCalculations = async () => {
-    if (useFlashloan) {
-      try {
-        const fee = await flashloanService.calculateFlashloanFee(amount);
-        const gas = await flashloanService.estimateFlashloanGas({
-          tokenAddress: opportunity.token0Address,
-          amount,
-          buyDex: opportunity.buyDex,
-          sellDex: opportunity.sellDex,
-          minProfit: opportunity.estimatedProfit,
-        });
-        setFlashloanFee(fee);
-        setFlashloanGas(gas);
-      } catch (error) {
-        console.error('Failed to calculate flashloan costs:', error);
-      }
+    } finally {
+      setIsExecuting(false);
     }
   };
 
-  // Calculate profit based on trade type
-  const estimatedAmountOut = parseFloat(amount) * (1 + parseFloat(opportunity.priceDifference) / 100);
-  const grossProfit = parseFloat(opportunity.estimatedProfit) * (parseFloat(amount) / 1000);
-  const regularGasCost = parseFloat(opportunity.gasCost);
-  const flashloanGasCost = parseFloat(flashloanGas) || 0;
-  const flashloanFeeCost = parseFloat(flashloanFee) || 0;
-  
-  const totalCost = useFlashloan 
-    ? flashloanGasCost + flashloanFeeCost 
-    : regularGasCost;
-  
-  const finalProfit = grossProfit - totalCost;
+  const expectedProfit = (parseFloat(tradeAmount) * parseFloat(opportunity.priceDifference)) / 100;
+  const estimatedGas = 0.002; // ETH
+  const netProfit = expectedProfit - (estimatedGas * 3200); // Approximate gas cost in USD
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-dark-secondary border-slate-700 text-white max-w-md">
+      <DialogContent className="sm:max-w-md bg-dark-secondary border-slate-700">
         <DialogHeader>
-          <DialogTitle className="text-lg font-semibold">Execute Arbitrage Trade</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 text-white">
+            <TrendingUp className="h-5 w-5 text-profit-green" />
+            Execute Arbitrage Trade
+          </DialogTitle>
+          <DialogDescription className="text-slate-400">
+            Review and execute this arbitrage opportunity
+          </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-4">
-          {/* Trade Details */}
-          <div className="bg-dark-tertiary rounded-lg p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-slate-400">Token Pair</span>
-              <span className="text-sm font-medium text-white">{opportunity.tokenPair}</span>
-            </div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-slate-400">Buy from</span>
-              <span className="text-sm font-medium text-white">{opportunity.buyDex}</span>
-            </div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-slate-400">Sell to</span>
-              <span className="text-sm font-medium text-white">{opportunity.sellDex}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-400">Price Difference</span>
-              <Badge className="bg-profit-green bg-opacity-20 text-profit-green">
+          {/* Opportunity Summary */}
+          <div className="p-4 bg-dark-tertiary rounded-lg border border-slate-600">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-medium text-white">{opportunity.tokenPair}</h3>
+              <Badge variant="secondary" className="bg-profit-green/20 text-profit-green">
                 +{opportunity.priceDifference}%
               </Badge>
             </div>
+            
+            <div className="grid grid-cols-2 gap-4 text-xs">
+              <div>
+                <p className="text-slate-400">Buy from</p>
+                <p className="text-white font-medium">{opportunity.buyDex}</p>
+                <p className="text-slate-300">${opportunity.buyPrice}</p>
+              </div>
+              <div>
+                <p className="text-slate-400">Sell to</p>
+                <p className="text-white font-medium">{opportunity.sellDex}</p>
+                <p className="text-slate-300">${opportunity.sellPrice}</p>
+              </div>
+            </div>
           </div>
 
-          {/* Flashloan Toggle */}
-          <div className="bg-dark-tertiary rounded-lg p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-2">
-                <Zap className="w-4 h-4 text-primary-blue" />
-                <span className="text-sm font-medium">Use Balancer Flashloan</span>
-              </div>
-              <Switch
-                checked={useFlashloan}
-                onCheckedChange={(checked) => {
-                  setUseFlashloan(checked);
-                  if (checked) updateFlashloanCalculations();
-                }}
+          {/* Trade Parameters */}
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="amount" className="text-sm font-medium text-slate-300">
+                Trade Amount (USD)
+              </Label>
+              <Input
+                id="amount"
+                type="number"
+                value={tradeAmount}
+                onChange={(e) => setTradeAmount(e.target.value)}
+                className="mt-1 bg-dark-tertiary border-slate-600 text-white"
+                placeholder="100"
               />
             </div>
-            <div className="flex items-start space-x-2 text-xs text-slate-400">
-              <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
-              <span>
-                {useFlashloan 
-                  ? "Execute arbitrage without upfront capital using Balancer's 0% fee flashloans"
-                  : "Use your own capital for the arbitrage trade"
-                }
-              </span>
-            </div>
-          </div>
 
-          {/* Amount Input */}
-          <div className="space-y-2">
-            <Label htmlFor="amount" className="text-sm font-medium">
-              {useFlashloan ? "Flashloan Amount (USDC)" : "Trade Amount (USDC)"}
-            </Label>
-            <Input
-              id="amount"
-              type="number"
-              value={amount}
-              onChange={(e) => {
-                setAmount(e.target.value);
-                if (useFlashloan) updateFlashloanCalculations();
-              }}
-              className="bg-dark-tertiary border-slate-600 text-white"
-              placeholder="1000"
-            />
-            {useFlashloan && (
-              <div className="text-xs text-slate-400">
-                No upfront capital required - funds borrowed temporarily via flashloan
-              </div>
-            )}
+            <div>
+              <Label htmlFor="slippage" className="text-sm font-medium text-slate-300">
+                Max Slippage (%)
+              </Label>
+              <Input
+                id="slippage"
+                type="number"
+                value={maxSlippage}
+                onChange={(e) => setMaxSlippage(e.target.value)}
+                className="mt-1 bg-dark-tertiary border-slate-600 text-white"
+                placeholder="2"
+                step="0.1"
+              />
+            </div>
           </div>
 
           {/* Profit Calculation */}
-          <div className="bg-dark-tertiary rounded-lg p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-slate-400">Amount Out</span>
-              <span className="text-sm font-medium text-white">${estimatedAmountOut.toFixed(2)}</span>
+          <div className="p-4 bg-green-900/20 border border-green-700/50 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <DollarSign className="h-4 w-4 text-profit-green" />
+              <span className="text-sm font-medium text-profit-green">Estimated Profit</span>
             </div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-slate-400">Gross Profit</span>
-              <span className="text-sm font-medium text-profit-green">${grossProfit.toFixed(2)}</span>
-            </div>
-            {useFlashloan ? (
-              <>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-slate-400">Flashloan Fee</span>
-                  <span className="text-sm font-medium text-white">${flashloanFeeCost.toFixed(4)}</span>
-                </div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-slate-400">Flashloan Gas</span>
-                  <span className="text-sm font-medium text-white">${flashloanGasCost.toFixed(2)}</span>
-                </div>
-              </>
-            ) : (
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-slate-400">Gas Fee</span>
-                <span className="text-sm font-medium text-white">${regularGasCost.toFixed(2)}</span>
+            <div className="space-y-1 text-xs">
+              <div className="flex justify-between text-slate-300">
+                <span>Gross Profit:</span>
+                <span className="text-profit-green">+${expectedProfit.toFixed(2)}</span>
               </div>
-            )}
-            <Separator className="my-2 bg-slate-600" />
-            <div className="flex items-center justify-between text-lg font-semibold">
-              <span className="text-white">Net Profit</span>
-              <span className={finalProfit > 0 ? "text-profit-green" : "text-loss-red"}>
-                ${finalProfit.toFixed(2)}
-              </span>
-            </div>
-            {useFlashloan && (
-              <div className="mt-2 text-xs text-slate-400">
-                Capital efficiency: {((finalProfit / parseFloat(amount)) * 100).toFixed(1)}% ROI with 0 upfront capital
+              <div className="flex justify-between text-slate-300">
+                <span>Gas Costs:</span>
+                <span className="text-red-400">-${(estimatedGas * 3200).toFixed(2)}</span>
               </div>
-            )}
+              <hr className="border-slate-600" />
+              <div className="flex justify-between text-white font-medium">
+                <span>Net Profit:</span>
+                <span className={netProfit > 0 ? "text-profit-green" : "text-red-400"}>
+                  ${netProfit.toFixed(2)}
+                </span>
+              </div>
+            </div>
           </div>
 
-          {/* Warning */}
-          {finalProfit <= 0 && (
-            <div className="flex items-center space-x-2 p-3 bg-warning-amber bg-opacity-10 border border-warning-amber rounded-lg">
-              <AlertTriangle className="w-4 h-4 text-warning-amber" />
-              <span className="text-sm text-warning-amber">
-                This trade may result in a loss due to gas costs
-              </span>
+          {/* Risk Warning */}
+          <div className="p-3 bg-yellow-900/20 border border-yellow-700/50 rounded-lg">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5" />
+              <div className="text-xs">
+                <p className="text-yellow-500 font-medium mb-1">Trading Risks</p>
+                <p className="text-slate-300">
+                  Arbitrage trades involve price volatility and gas fee risks. 
+                  Ensure you have sufficient ETH balance for gas fees.
+                </p>
+              </div>
             </div>
-          )}
+          </div>
 
           {/* Action Buttons */}
-          <div className="flex space-x-3 pt-4">
-            <Button 
-              variant="outline" 
+          <div className="flex gap-3 pt-2">
+            <Button
+              variant="outline"
               onClick={onClose}
-              className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700"
-              disabled={executeTradeMutation.isPending}
+              className="flex-1 border-slate-600 text-slate-300 hover:text-white"
             >
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={handleExecuteTrade}
-              disabled={executeTradeMutation.isPending || finalProfit <= 0}
-              className="flex-1 bg-profit-green hover:bg-green-600 text-white"
+              disabled={isExecuting || netProfit <= 0}
+              className="flex-1 bg-profit-green hover:bg-profit-green/90 text-white"
             >
-              {executeTradeMutation.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {useFlashloan ? "Executing Flashloan..." : "Executing Trade..."}
-                </>
+              {isExecuting ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Executing...
+                </div>
               ) : (
-                <>
-                  {useFlashloan && <Zap className="w-4 h-4 mr-2" />}
-                  {useFlashloan ? "Execute Flashloan Arbitrage" : "Confirm Trade"}
-                </>
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4" />
+                  Execute Trade
+                </div>
               )}
             </Button>
           </div>

@@ -11,7 +11,9 @@ export default function SimpleAccountManager() {
   const [showPrivateKey, setShowPrivateKey] = useState(false);
   const [privateKeyInput, setPrivateKeyInput] = useState('');
   const [user, setUser] = useState<any>(null);
+  const [balance, setBalance] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const { toast } = useToast();
 
   // Load user data on component mount
@@ -26,6 +28,11 @@ export default function SimpleAccountManager() {
           if (response.ok) {
             const userData = await response.json();
             setUser(userData.user);
+            
+            // Load balance if user has a wallet configured
+            if (userData.user?.hasPrivateKey) {
+              loadBalance();
+            }
           }
         } catch (error) {
           console.error('Failed to fetch user data');
@@ -34,6 +41,26 @@ export default function SimpleAccountManager() {
     };
     loadUserData();
   }, []);
+
+  const loadBalance = async () => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) return;
+    
+    setIsLoadingBalance(true);
+    try {
+      const response = await fetch('/api/auth/balance', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const balanceData = await response.json();
+        setBalance(balanceData);
+      }
+    } catch (error) {
+      console.error('Failed to fetch balance');
+    } finally {
+      setIsLoadingBalance(false);
+    }
+  };
 
   const handlePrivateKeySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,6 +112,9 @@ export default function SimpleAccountManager() {
       
       setPrivateKeyInput('');
       setUser({ ...user, walletAddress: result.walletAddress, hasPrivateKey: true });
+      
+      // Load balance after successful private key update
+      loadBalance();
       
     } catch (error: any) {
       toast({
