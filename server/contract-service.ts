@@ -92,19 +92,20 @@ export class ContractService {
       const tokenB = this.getTokenAddress(params.tokenB);
       const buyDex = this.getDexRouter(params.buyDex);
       const sellDex = this.getDexRouter(params.sellDex);
-      
-      const arbitrageParams = [
+
+      // Create struct parameter as expected by contract
+      const arbitrageStruct = {
         tokenA,
         tokenB,
-        ethers.parseEther(params.amountIn),
+        amountIn: ethers.parseEther(params.amountIn),
         buyDex,
         sellDex,
-        ethers.parseEther(params.minProfit)
-      ];
+        minProfit: ethers.parseEther(params.minProfit)
+      };
 
       // Create function data manually to avoid ENS resolution
       const iface = new ethers.Interface(this.contractABI);
-      const functionData = iface.encodeFunctionData('executeArbitrage', arbitrageParams);
+      const functionData = iface.encodeFunctionData('executeArbitrage', [arbitrageStruct]);
 
       // Estimate gas using raw transaction
       const gasEstimate = await this.provider.estimateGas({
