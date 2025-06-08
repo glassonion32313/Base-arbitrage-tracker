@@ -5,8 +5,24 @@ import { setupVite, serveStatic, log } from "./vite";
 const app = express();
 
 // Configure JSON parsing with proper error handling
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ 
+  limit: '10mb',
+  strict: false,
+  type: 'application/json'
+}));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Global error handler for JSON parsing errors
+app.use((err: any, req: any, res: any, next: any) => {
+  if (err instanceof SyntaxError && 'body' in err) {
+    console.error(`JSON parsing error on ${req.path} :`, err.message);
+    return res.status(400).json({ 
+      message: 'Invalid JSON format in request body',
+      error: 'Bad JSON syntax'
+    });
+  }
+  next(err);
+});
 
 app.use((req, res, next) => {
   const start = Date.now();

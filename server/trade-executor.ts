@@ -203,7 +203,7 @@ export class TradeExecutor {
       }
 
       // Pre-flight checks before execution
-      const balance = await wallet.provider.getBalance(wallet.address);
+      const balance = await this.provider.getBalance(wallet.address);
       const minBalance = ethers.parseEther('0.01'); // Require minimum 0.01 ETH for gas
       
       if (balance < minBalance) {
