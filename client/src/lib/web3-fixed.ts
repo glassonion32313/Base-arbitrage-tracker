@@ -40,7 +40,7 @@ export const TOKEN_ADDRESSES = {
 };
 
 export class Web3Service {
-  private provider: Window['ethereum'] = null;
+  private provider: Window['ethereum'] | null = null;
 
   async connect(): Promise<string> {
     if (!window.ethereum) {

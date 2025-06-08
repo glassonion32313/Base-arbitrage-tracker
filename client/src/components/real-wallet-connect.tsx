@@ -51,19 +51,39 @@ export default function RealWalletConnect() {
   const { toast } = useToast();
 
   useEffect(() => {
-    checkConnection();
-    setupEventListeners();
+    // Wait for page to fully load before checking MetaMask
+    const initWallet = async () => {
+      // Wait for MetaMask to inject
+      if (typeof window !== 'undefined') {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      
+      await checkConnection();
+      setupEventListeners();
+    };
+    
+    initWallet();
     
     return () => {
-      if (window.ethereum) {
-        window.ethereum.removeAllListeners?.();
+      if (window.ethereum?.removeAllListeners) {
+        window.ethereum.removeAllListeners();
       }
     };
   }, []);
 
   const checkConnection = async () => {
+    // Wait for MetaMask to load
+    if (typeof window !== 'undefined') {
+      // Check if MetaMask is still loading
+      let attempts = 0;
+      while (!window.ethereum && attempts < 10) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+    }
+    
     if (!window.ethereum) {
-      console.log('MetaMask not detected');
+      console.log('MetaMask not detected after waiting');
       return;
     }
 
@@ -132,28 +152,40 @@ export default function RealWalletConnect() {
   };
 
   const connect = async () => {
+    // Enhanced MetaMask detection
     if (!window.ethereum) {
-      toast({
-        title: "MetaMask Required",
-        description: "Please install MetaMask to connect your wallet",
-        variant: "destructive",
-      });
-      return;
+      // Wait a bit more and try again
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      if (!window.ethereum) {
+        toast({
+          title: "MetaMask Required",
+          description: "Please install MetaMask extension and refresh the page",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setWallet(prev => ({ ...prev, isConnecting: true }));
 
     try {
+      console.log('Requesting MetaMask connection...');
+      
       const accounts = await window.ethereum.request({
         method: 'eth_requestAccounts',
       });
 
-      if (accounts.length === 0) {
-        throw new Error('No accounts found');
+      console.log('Accounts received:', accounts);
+
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No accounts found - please unlock MetaMask');
       }
 
+      console.log('Switching to Base network...');
       await switchToBase();
       
+      console.log('Getting balance...');
       const balance = await getBalance(accounts[0]);
       const chainId = await window.ethereum.request({ method: 'eth_chainId' });
 
@@ -164,6 +196,8 @@ export default function RealWalletConnect() {
         chainId,
         isConnecting: false,
       });
+
+      console.log('Wallet connected successfully:', accounts[0]);
 
       toast({
         title: "Wallet Connected",
@@ -176,13 +210,19 @@ export default function RealWalletConnect() {
       if (error.code === 4001) {
         toast({
           title: "Connection Rejected",
-          description: "Please approve the connection request",
+          description: "Please approve the connection request in MetaMask",
+          variant: "destructive",
+        });
+      } else if (error.code === -32002) {
+        toast({
+          title: "Connection Pending",
+          description: "Please check MetaMask for pending connection request",
           variant: "destructive",
         });
       } else {
         toast({
           title: "Connection Failed",
-          description: error.message || "Failed to connect wallet",
+          description: error.message || "Failed to connect wallet - please try again",
           variant: "destructive",
         });
       }
