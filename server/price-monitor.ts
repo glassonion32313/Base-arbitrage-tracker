@@ -118,26 +118,40 @@ export class PriceMonitor {
         opportunities.push(...arbitrageOps);
       }
 
-      // Clear old opportunities and add new ones
-      await storage.clearStaleOpportunities(2.0); // Clear opportunities older than 2 minutes
-      
-      // Save new opportunities and broadcast via WebSocket
-      for (const opportunity of opportunities) {
+      // Save new opportunities with batch insert for better performance
+      if (opportunities.length > 0) {
         try {
-          const savedOpportunity = await storage.createArbitrageOpportunity(opportunity);
+          const savedOpportunities = await storage.batchCreateArbitrageOpportunities(opportunities);
+          console.log(`Saved ${savedOpportunities.length} new opportunities to database`);
           
-          // Broadcast new opportunity via WebSocket
+          // Broadcast all new opportunities via WebSocket
           const broadcastToClients = (global as any).broadcastToClients;
           if (broadcastToClients) {
-            broadcastToClients({
-              type: 'new_opportunity',
-              data: savedOpportunity
+            savedOpportunities.forEach(opportunity => {
+              broadcastToClients({
+                type: 'new_opportunity',
+                data: opportunity
+              });
             });
           }
         } catch (error) {
-          console.error("Failed to save opportunity:", error);
+          console.error("Failed to batch save opportunities:", error);
+          
+          // Fallback to individual saves
+          for (const opportunity of opportunities) {
+            try {
+              await storage.createArbitrageOpportunity(opportunity);
+            } catch (err) {
+              console.error("Failed to save individual opportunity:", err);
+            }
+          }
         }
       }
+      
+      // Only clear very old opportunities (older than 30 minutes)
+      setTimeout(async () => {
+        await storage.clearStaleOpportunities(30.0);
+      }, 5000); // Delay cleanup by 5 seconds to ensure API calls can retrieve data
 
       console.log(`Found ${opportunities.length} arbitrage opportunities`);
       

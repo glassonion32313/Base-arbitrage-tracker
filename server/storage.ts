@@ -34,6 +34,7 @@ export interface IStorage {
   }): Promise<ArbitrageOpportunity[]>;
   getArbitrageOpportunityById(id: number): Promise<ArbitrageOpportunity | undefined>;
   createArbitrageOpportunity(opportunity: InsertArbitrageOpportunity): Promise<ArbitrageOpportunity>;
+  batchCreateArbitrageOpportunities(opportunities: InsertArbitrageOpportunity[]): Promise<ArbitrageOpportunity[]>;
   updateArbitrageOpportunity(id: number, updates: Partial<InsertArbitrageOpportunity>): Promise<ArbitrageOpportunity | undefined>;
   deleteArbitrageOpportunity(id: number): Promise<boolean>;
   clearStaleOpportunities(olderThanMinutes: number): Promise<number>;
@@ -303,6 +304,37 @@ export class DatabaseStorage implements IStorage {
       // Fallback to simple insert if upsert fails
       const [result] = await db.insert(arbitrageOpportunities).values(opportunity).returning();
       return result;
+    }
+  }
+
+  async batchCreateArbitrageOpportunities(opportunities: InsertArbitrageOpportunity[]): Promise<ArbitrageOpportunity[]> {
+    try {
+      if (opportunities.length === 0) return [];
+      
+      const opportunitiesWithTimestamp = opportunities.map(op => ({
+        ...op,
+        lastUpdated: new Date(),
+      }));
+      
+      const newOpportunities = await db
+        .insert(arbitrageOpportunities)
+        .values(opportunitiesWithTimestamp)
+        .returning();
+      
+      return newOpportunities;
+    } catch (error) {
+      console.error('Failed to batch create arbitrage opportunities:', error);
+      // Fallback to individual creates
+      const results: ArbitrageOpportunity[] = [];
+      for (const opportunity of opportunities) {
+        try {
+          const result = await this.createArbitrageOpportunity(opportunity);
+          results.push(result);
+        } catch (err) {
+          console.error('Failed to create individual opportunity:', err);
+        }
+      }
+      return results;
     }
   }
 
