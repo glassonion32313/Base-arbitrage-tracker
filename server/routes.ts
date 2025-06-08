@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { WebSocketServer, WebSocket } from 'ws';
 import { storage } from "./storage";
 import { priceMonitor } from "./price-monitor";
 import { insertArbitrageOpportunitySchema, insertTransactionSchema } from "@shared/schema";
@@ -9,6 +10,19 @@ import { getContractIntegration } from "./contract-integration";
 
 // Initialize contract integration
 const contractService = getContractIntegration();
+
+// WebSocket connections tracking
+const wsConnections = new Set<WebSocket>();
+
+// Broadcast to all connected WebSocket clients
+function broadcastToClients(data: any) {
+  const message = JSON.stringify(data);
+  wsConnections.forEach(ws => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(message);
+    }
+  });
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Get arbitrage opportunities with optional filters
@@ -292,5 +306,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   priceMonitor.startMonitoring();
 
   const httpServer = createServer(app);
+  
+  // Setup WebSocket server on /ws path
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  
+  wss.on('connection', (ws) => {
+    console.log('WebSocket client connected');
+    wsConnections.add(ws);
+    
+    // Send initial data to new client
+    ws.send(JSON.stringify({ 
+      type: 'connected', 
+      message: 'Connected to arbitrage scanner',
+      contractAddress: contractService?.getContractAddress()
+    }));
+    
+    ws.on('close', () => {
+      console.log('WebSocket client disconnected');
+      wsConnections.delete(ws);
+    });
+    
+    ws.on('error', (error) => {
+      console.error('WebSocket error:', error);
+      wsConnections.delete(ws);
+    });
+  });
+
+  // Export broadcast function for use by other modules
+  (global as any).broadcastToClients = broadcastToClients;
+
   return httpServer;
 }

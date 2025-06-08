@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { Play, Square, Activity, TrendingUp, Clock, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useWebSocket, useWebSocketData } from "@/hooks/use-websocket";
 
 interface MonitorStatus {
   monitoring: boolean;
@@ -33,41 +34,50 @@ export default function MonitoringDashboard() {
     }
   }, [autoRefresh]);
 
-  const fetchAllData = async () => {
-    await Promise.all([
-      fetchStatus(),
-      fetchContractInfo(),
-      fetchGasPrices()
-    ]);
-  };
+  // WebSocket connection for real-time updates
+  const { isConnected, lastMessage, connectionStatus } = useWebSocket();
 
-  const fetchStatus = async () => {
-    try {
-      const response = await fetch("/api/monitor/status");
-      const data = await response.json();
-      setStatus(data);
-    } catch (error) {
-      console.error("Failed to fetch monitor status:", error);
+  // Listen for WebSocket updates
+  useEffect(() => {
+    if (lastMessage) {
+      switch (lastMessage.type) {
+        case 'connected':
+          if (lastMessage.contractAddress) {
+            setContractInfo({ address: lastMessage.contractAddress, network: 'Base', chainId: 8453 });
+          }
+          break;
+        case 'gas_update':
+          if (lastMessage.data) {
+            setGasPrices(lastMessage.data);
+          }
+          break;
+        case 'monitor_status':
+          if (lastMessage.data) {
+            setStatus(lastMessage.data);
+          }
+          break;
+      }
     }
-  };
+  }, [lastMessage]);
 
-  const fetchContractInfo = async () => {
+  const fetchInitialData = async () => {
+    // Fetch initial data only once on component mount
     try {
-      const response = await fetch("/api/contract/address");
-      const data = await response.json();
-      setContractInfo(data);
+      const [statusResponse, contractResponse, gasResponse] = await Promise.all([
+        fetch("/api/monitor/status"),
+        fetch("/api/contract/address"),
+        fetch("/api/contract/gas")
+      ]);
+      
+      const statusData = await statusResponse.json();
+      const contractData = await contractResponse.json();
+      const gasData = await gasResponse.json();
+      
+      setStatus(statusData);
+      setContractInfo(contractData);
+      setGasPrices(gasData);
     } catch (error) {
-      console.error("Failed to fetch contract info:", error);
-    }
-  };
-
-  const fetchGasPrices = async () => {
-    try {
-      const response = await fetch("/api/contract/gas");
-      const data = await response.json();
-      setGasPrices(data);
-    } catch (error) {
-      console.error("Failed to fetch gas prices:", error);
+      console.error("Failed to fetch initial data:", error);
     }
   };
 

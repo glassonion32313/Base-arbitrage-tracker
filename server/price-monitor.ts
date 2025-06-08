@@ -111,16 +111,35 @@ export class PriceMonitor {
       // Clear old opportunities and add new ones
       await storage.clearStaleOpportunities(5); // Clear opportunities older than 5 minutes
       
-      // Save new opportunities
+      // Save new opportunities and broadcast via WebSocket
       for (const opportunity of opportunities) {
         try {
-          await storage.createArbitrageOpportunity(opportunity);
+          const savedOpportunity = await storage.createArbitrageOpportunity(opportunity);
+          
+          // Broadcast new opportunity via WebSocket
+          const broadcastToClients = (global as any).broadcastToClients;
+          if (broadcastToClients) {
+            broadcastToClients({
+              type: 'new_opportunity',
+              data: savedOpportunity
+            });
+          }
         } catch (error) {
           console.error("Failed to save opportunity:", error);
         }
       }
 
       console.log(`Found ${opportunities.length} arbitrage opportunities`);
+      
+      // Broadcast opportunities summary update
+      const broadcastToClients = (global as any).broadcastToClients;
+      if (broadcastToClients) {
+        broadcastToClients({
+          type: 'opportunities_updated',
+          count: opportunities.length,
+          timestamp: new Date()
+        });
+      }
       
     } catch (error) {
       console.error("Error in price monitoring:", error);
