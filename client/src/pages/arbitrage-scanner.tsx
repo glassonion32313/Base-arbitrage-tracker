@@ -17,6 +17,7 @@ import { useWebSocketOpportunities } from "@/hooks/use-websocket";
 
 export default function ArbitrageScanner() {
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [autoExecute, setAutoExecute] = useState(false);
   const [filters, setFilters] = useState({
     minProfit: 5,
     selectedDexes: ["Uniswap V3", "SushiSwap", "BaseSwap"],
@@ -70,6 +71,69 @@ export default function ArbitrageScanner() {
     });
   };
 
+  // Auto-execute high-value opportunities
+  useEffect(() => {
+    if (!autoExecute || !opportunities) return;
+    
+    const highValueOpportunities = opportunities.filter(
+      (opp: any) => parseFloat(opp.estimatedProfit) >= 15
+    );
+    
+    highValueOpportunities.forEach((opportunity: any) => {
+      // Check if this opportunity was already auto-executed
+      const executedKey = `auto_executed_${opportunity.id}`;
+      if (localStorage.getItem(executedKey)) return;
+      
+      // Mark as auto-executed to prevent duplicate executions
+      localStorage.setItem(executedKey, 'true');
+      
+      // Execute the opportunity
+      executeAutoTrade(opportunity);
+    });
+  }, [opportunities, autoExecute]);
+
+  const executeAutoTrade = async (opportunity: any) => {
+    try {
+      toast({
+        title: "Auto-Executing Trade",
+        description: `Processing ${opportunity.tokenPair} with $${opportunity.estimatedProfit} profit...`,
+        variant: "default",
+      });
+
+      const response = await fetch('/api/arbitrage/execute-auto', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          opportunityId: opportunity.id,
+          useFlashloan: true
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        toast({
+          title: "🚀 Auto-Execute Success!",
+          description: `${opportunity.tokenPair}: $${opportunity.estimatedProfit} profit - Transaction: ${result.txHash?.slice(0,10)}...`,
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Auto-Execute Failed",
+          description: result.error || "Execution failed - opportunity may have expired",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Auto-execute error:', error);
+      toast({
+        title: "Auto-Execute Error",
+        description: "Network error during auto-execution",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleAutoRefreshToggle = () => {
     setAutoRefresh(!autoRefresh);
     toast({
@@ -103,6 +167,16 @@ export default function ArbitrageScanner() {
             </div>
 
             <div className="flex items-center space-x-4">
+              {/* Auto Execute Toggle */}
+              <div className="flex items-center space-x-2 px-3 py-1 bg-green-500/10 rounded-lg">
+                <Zap className="w-4 h-4 text-green-400" />
+                <span className="text-sm text-slate-300">Auto-Execute $15+</span>
+                <Switch
+                  checked={autoExecute}
+                  onCheckedChange={setAutoExecute}
+                />
+              </div>
+
               {/* Auto Refresh Toggle */}
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-slate-400">Auto-refresh</span>
