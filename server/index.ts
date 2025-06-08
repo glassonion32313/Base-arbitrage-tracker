@@ -3,8 +3,10 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+
+// Configure JSON parsing with proper error handling
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -39,12 +41,17 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
+    // Handle JSON parsing errors specifically
+    if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+      console.error('JSON parsing error on', req.path, ':', err.message);
+      return res.status(400).json({ error: 'Invalid JSON in request body' });
+    }
+    
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
-
+    console.error('Server error:', message);
     res.status(status).json({ message });
-    throw err;
   });
 
   // importantly only setup vite in development and after
