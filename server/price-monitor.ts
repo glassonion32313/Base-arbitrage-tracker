@@ -223,7 +223,7 @@ export class PriceMonitor {
     const sellDexFee = dexFees.sellFee;
     
     // Estimate gas cost (Base network average)
-    const gasCost = await this.estimateGasCost();
+    const gasCost = this.estimateGasCost();
     const tradeAmount = 1000; // $1000 trade size for calculation
     
     // Calculate net profit with correct fee accounting
