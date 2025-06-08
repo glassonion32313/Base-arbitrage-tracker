@@ -44,17 +44,19 @@ export default function MonitoringDashboard() {
   const startMonitoring = async () => {
     setIsLoading(true);
     try {
-      const response = await apiRequest("/api/monitor/start", {
+      const response = await fetch("/api/monitor/start", {
         method: "POST"
       });
       
-      toast({
-        title: "Monitoring Started",
-        description: "Real-time price monitoring is now active",
-        variant: "default"
-      });
-      
-      await fetchStatus();
+      if (response.ok) {
+        toast({
+          title: "Monitoring Started",
+          description: "Real-time price monitoring is now active",
+          variant: "default"
+        });
+        
+        await fetchStatus();
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -69,17 +71,19 @@ export default function MonitoringDashboard() {
   const stopMonitoring = async () => {
     setIsLoading(true);
     try {
-      const response = await apiRequest("/api/monitor/stop", {
+      const response = await fetch("/api/monitor/stop", {
         method: "POST"
       });
       
-      toast({
-        title: "Monitoring Stopped",
-        description: "Price monitoring has been disabled",
-        variant: "default"
-      });
-      
-      await fetchStatus();
+      if (response.ok) {
+        toast({
+          title: "Monitoring Stopped",
+          description: "Price monitoring has been disabled",
+          variant: "default"
+        });
+        
+        await fetchStatus();
+      }
     } catch (error) {
       toast({
         title: "Error",

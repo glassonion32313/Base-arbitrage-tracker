@@ -5,10 +5,11 @@ import ArbitrageTable from "@/components/arbitrage-table";
 import StatsCards from "@/components/stats-cards";
 import FiltersSidebar from "@/components/filters-sidebar";
 import MonitoringDashboard from "@/components/monitoring-dashboard";
+import NotificationCenter from "@/components/notification-center";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, TrendingUp, Activity } from "lucide-react";
+import { RefreshCw, TrendingUp, Activity, Bell } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ArbitrageScanner() {
@@ -111,15 +112,42 @@ export default function ArbitrageScanner() {
 
           {/* Main Content Area */}
           <div className="lg:col-span-3">
-            {/* Stats Cards */}
-            <StatsCards stats={stats} />
+            <Tabs defaultValue="opportunities" className="space-y-6">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="opportunities" className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  Opportunities
+                </TabsTrigger>
+                <TabsTrigger value="monitoring" className="flex items-center gap-2">
+                  <Activity className="h-4 w-4" />
+                  Live Monitoring
+                </TabsTrigger>
+                <TabsTrigger value="alerts" className="flex items-center gap-2">
+                  <Bell className="h-4 w-4" />
+                  Alerts
+                </TabsTrigger>
+              </TabsList>
 
-            {/* Opportunities Table */}
-            <ArbitrageTable 
-              opportunities={opportunities}
-              isLoading={isLoading}
-              onRefresh={handleRefresh}
-            />
+              <TabsContent value="opportunities" className="space-y-6">
+                {/* Stats Cards */}
+                <StatsCards stats={stats} />
+
+                {/* Opportunities Table */}
+                <ArbitrageTable 
+                  opportunities={opportunities}
+                  isLoading={isLoading}
+                  onRefresh={handleRefresh}
+                />
+              </TabsContent>
+
+              <TabsContent value="monitoring" className="space-y-6">
+                <MonitoringDashboard />
+              </TabsContent>
+
+              <TabsContent value="alerts" className="space-y-6">
+                <NotificationCenter />
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </div>
