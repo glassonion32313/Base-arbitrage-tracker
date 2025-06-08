@@ -201,8 +201,9 @@ export class OnChainPriceService {
       const pair = new ethers.Contract(pairAddress, this.PAIR_ABI, this.provider);
       const reserves = await pair.getReserves();
       
-      const reserve0 = parseFloat(ethers.formatEther(reserves.reserve0));
-      const reserve1 = parseFloat(ethers.formatEther(reserves.reserve1));
+      // Get token decimals for proper price calculation
+      const reserve0 = parseFloat(ethers.formatUnits(reserves.reserve0, 18));
+      const reserve1 = parseFloat(ethers.formatUnits(reserves.reserve1, 6)); // USDC typically has 6 decimals
       
       if (reserve0 === 0 || reserve1 === 0) return null;
 
@@ -218,9 +219,16 @@ export class OnChainPriceService {
   }
 
   private sqrtPriceX96ToPrice(sqrtPriceX96: bigint): number {
-    // Convert sqrt price to actual price
-    const sqrtPrice = Number(sqrtPriceX96) / (2 ** 96);
-    return sqrtPrice * sqrtPrice;
+    // Correct Uniswap V3 price calculation
+    // sqrtPriceX96 = sqrt(price) * 2^96
+    // price = (sqrtPriceX96 / 2^96)^2
+    
+    const Q96 = Math.pow(2, 96);
+    const sqrtPrice = Number(sqrtPriceX96) / Number(Q96);
+    const price = sqrtPrice * sqrtPrice;
+    
+    // Clamp to reasonable token price range (0.000001 to 1000000)
+    return Math.max(0.000001, Math.min(price, 1000000));
   }
 
   private calculatePairAddress(factory: string, tokenA: string, tokenB: string): string {
