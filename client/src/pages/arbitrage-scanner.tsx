@@ -6,10 +6,12 @@ import StatsCards from "@/components/stats-cards";
 import FiltersSidebar from "@/components/filters-sidebar";
 import MonitoringDashboard from "@/components/monitoring-dashboard";
 import NotificationCenter from "@/components/notification-center";
+import MEVProtection from "@/components/mev-protection";
+import AutoTrading from "@/components/auto-trading";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, TrendingUp, Activity, Bell } from "lucide-react";
+import { RefreshCw, TrendingUp, Activity, Bell, Shield, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ArbitrageScanner() {
@@ -113,7 +115,7 @@ export default function ArbitrageScanner() {
           {/* Main Content Area */}
           <div className="lg:col-span-3">
             <Tabs defaultValue="opportunities" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="opportunities" className="flex items-center gap-2">
                   <TrendingUp className="h-4 w-4" />
                   Opportunities
@@ -125,6 +127,14 @@ export default function ArbitrageScanner() {
                 <TabsTrigger value="alerts" className="flex items-center gap-2">
                   <Bell className="h-4 w-4" />
                   Alerts
+                </TabsTrigger>
+                <TabsTrigger value="protection" className="flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  MEV Protection
+                </TabsTrigger>
+                <TabsTrigger value="auto" className="flex items-center gap-2">
+                  <Zap className="h-4 w-4" />
+                  Auto Mode
                 </TabsTrigger>
               </TabsList>
 
@@ -146,6 +156,14 @@ export default function ArbitrageScanner() {
 
               <TabsContent value="alerts" className="space-y-6">
                 <NotificationCenter />
+              </TabsContent>
+
+              <TabsContent value="protection" className="space-y-6">
+                <MEVProtection />
+              </TabsContent>
+
+              <TabsContent value="auto" className="space-y-6">
+                <AutoTrading />
               </TabsContent>
             </Tabs>
           </div>
