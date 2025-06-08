@@ -375,6 +375,16 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async clearAllOpportunities(): Promise<number> {
+    try {
+      const result = await db.delete(arbitrageOpportunities);
+      return result.rowCount || 0;
+    } catch (error) {
+      console.error('Failed to clear all opportunities:', error);
+      return 0;
+    }
+  }
+
   async clearStaleOpportunities(olderThanMinutes: number): Promise<number> {
     try {
       // Use a more conservative cleanup approach - only clear opportunities older than 10 minutes

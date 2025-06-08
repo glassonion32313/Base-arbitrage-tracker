@@ -19,7 +19,7 @@ export class PriceMonitor {
   private sources: PriceSource[] = [];
   private monitoring = false;
   private interval: NodeJS.Timeout | null = null;
-  private readonly UPDATE_INTERVAL = 6000; // 6 seconds (every block on Base)
+  private readonly UPDATE_INTERVAL = 3000; // 3 seconds for faster updates
   private readonly MIN_PROFIT_THRESHOLD = 2; // Minimum $2 profit
   private priceCache: any = null;
   private lastApiCall = 0;
@@ -80,6 +80,9 @@ export class PriceMonitor {
   private async scanForOpportunities() {
     try {
       console.log("Scanning for arbitrage opportunities...");
+      
+      // Clear all existing opportunities for fresh data
+      await storage.clearAllOpportunities();
       
       // Fetch prices from all sources including enhanced on-chain prices
       const allPrices: TokenPrice[] = [];
@@ -145,10 +148,9 @@ export class PriceMonitor {
         }
       }
       
-      // Only clear very old opportunities (older than 5 minutes) with delay
-      setTimeout(async () => {
-        await storage.clearStaleOpportunities(5.0);
-      }, 30000); // Delay cleanup by 30 seconds to ensure API calls can retrieve data
+      // Clear opportunities more aggressively for real-time trading
+      // Clear opportunities older than 30 seconds immediately
+      await storage.clearStaleOpportunities(0.5); // 30 seconds
 
       console.log(`Found ${opportunities.length} arbitrage opportunities`);
       
