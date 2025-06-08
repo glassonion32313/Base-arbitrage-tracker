@@ -36,7 +36,7 @@ export default function TradeModal({ isOpen, onClose, opportunity }: TradeModalP
 
     setIsExecuting(true);
     try {
-      const response = await fetch('/api/trades/execute', {
+      const response = await fetch('/api/arbitrage/execute-auto', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -44,8 +44,6 @@ export default function TradeModal({ isOpen, onClose, opportunity }: TradeModalP
         },
         body: JSON.stringify({
           opportunityId: opportunity.id,
-          tradeAmount: tradeAmount,
-          maxSlippage: parseFloat(maxSlippage),
           useFlashloan: useFlashloan
         })
       });
