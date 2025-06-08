@@ -197,27 +197,79 @@ export class TradeExecutor {
         minProfit: ethers.parseEther('0.01').toString() // Minimum $0.01 profit
       };
 
-      // Execute through contract service
-      const txHash = await this.contractService.executeArbitrage(arbitrageParams, wallet.privateKey);
+      // Validate contract service availability
+      if (!this.contractService) {
+        throw new Error('Contract service not initialized');
+      }
 
-      // Wait for transaction confirmation
-      const receipt = await this.provider.waitForTransaction(txHash, 2); // Wait for 2 confirmations
-
-      if (receipt?.status === 1) {
-        // Calculate actual profit from transaction logs
-        const actualProfit = await this.calculateActualProfit(receipt, opportunity);
-        
-        return {
-          success: true,
-          txHash,
-          actualProfit: actualProfit.toString(),
-          gasUsed: receipt.gasUsed.toString()
-        };
-      } else {
+      // Pre-flight checks before execution
+      const balance = await wallet.provider.getBalance(wallet.address);
+      const minBalance = ethers.parseEther('0.01'); // Require minimum 0.01 ETH for gas
+      
+      if (balance < minBalance) {
         return {
           success: false,
-          error: 'Transaction failed on blockchain'
+          error: `Insufficient balance. Required: 0.01 ETH, Available: ${ethers.formatEther(balance)} ETH`
         };
+      }
+
+      // Execute with comprehensive error handling
+      try {
+        console.log(`Executing arbitrage for opportunity ${opportunity.id} with amount ${actualAmount}`);
+        
+        const txHash = await this.contractService.executeArbitrage(arbitrageParams, wallet.privateKey);
+        console.log(`Transaction submitted: ${txHash}`);
+
+        // Monitor transaction with timeout
+        const receipt = await Promise.race([
+          this.provider.waitForTransaction(txHash, 1),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Transaction timeout after 60 seconds')), 60000)
+          )
+        ]) as any;
+
+        if (receipt?.status === 1) {
+          const actualProfit = await this.calculateActualProfit(receipt, opportunity);
+          console.log(`Trade successful: ${txHash}, Profit: ${actualProfit}`);
+          
+          return {
+            success: true,
+            txHash,
+            actualProfit: actualProfit.toString(),
+            gasUsed: receipt.gasUsed.toString()
+          };
+        } else {
+          return {
+            success: false,
+            txHash,
+            error: 'Transaction reverted on blockchain'
+          };
+        }
+      } catch (contractError: any) {
+        console.error('Contract execution error:', contractError);
+        
+        // Provide specific error messages for common issues
+        if (contractError.message.includes('insufficient funds')) {
+          return {
+            success: false,
+            error: 'Insufficient funds for gas fees'
+          };
+        } else if (contractError.message.includes('execution reverted')) {
+          return {
+            success: false,
+            error: 'Contract execution reverted - likely slippage or liquidity issue'
+          };
+        } else if (contractError.message.includes('timeout')) {
+          return {
+            success: false,
+            error: 'Transaction timeout - network congestion'
+          };
+        } else {
+          return {
+            success: false,
+            error: `Contract error: ${contractError.message}`
+          };
+        }
       }
     } catch (error: any) {
       return {

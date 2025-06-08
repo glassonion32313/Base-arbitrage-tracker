@@ -118,23 +118,50 @@ export class ContractService {
       const iface = new ethers.Interface(this.contractABI);
       const functionData = iface.encodeFunctionData('executeArbitrage', [arbitrageStruct]);
 
-      // Estimate gas using raw transaction
-      const gasEstimate = await this.provider.estimateGas({
+      // Enhanced gas estimation with fallbacks
+      let gasEstimate: bigint;
+      try {
+        gasEstimate = await this.provider.estimateGas({
+          to: this.contractAddress,
+          data: functionData,
+          from: signer.address
+        });
+      } catch (gasError) {
+        console.warn('Gas estimation failed, using fallback:', gasError);
+        gasEstimate = BigInt(800000); // Conservative fallback for arbitrage
+      }
+
+      // Get current network fee data with fallbacks
+      let feeData;
+      try {
+        feeData = await this.provider.getFeeData();
+      } catch (feeError) {
+        console.warn('Fee data fetch failed, using fallback:', feeError);
+        feeData = {
+          maxFeePerGas: ethers.parseUnits('2', 'gwei'),
+          maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
+          gasPrice: ethers.parseUnits('1.5', 'gwei')
+        };
+      }
+
+      // Enhanced transaction parameters with safety margins
+      const txParams = {
         to: this.contractAddress,
         data: functionData,
-        from: signer.address
+        gasLimit: gasEstimate * BigInt(150) / BigInt(100), // 50% buffer for safety
+        maxFeePerGas: feeData.maxFeePerGas || ethers.parseUnits('2', 'gwei'),
+        maxPriorityFeePerGas: feeData.maxPriorityFeePerGas || ethers.parseUnits('1', 'gwei'),
+        nonce: await signer.getNonce()
+      };
+
+      console.log(`Transaction parameters:`, {
+        gasLimit: txParams.gasLimit.toString(),
+        maxFeePerGas: ethers.formatUnits(txParams.maxFeePerGas, 'gwei') + ' gwei',
+        maxPriorityFeePerGas: ethers.formatUnits(txParams.maxPriorityFeePerGas, 'gwei') + ' gwei'
       });
 
-      const gasPrice = await this.provider.getFeeData();
-
-      // Send transaction directly
-      const tx = await signer.sendTransaction({
-        to: this.contractAddress,
-        data: functionData,
-        gasLimit: gasEstimate * BigInt(120) / BigInt(100), // 20% buffer
-        maxFeePerGas: gasPrice.maxFeePerGas,
-        maxPriorityFeePerGas: gasPrice.maxPriorityFeePerGas
-      });
+      // Send transaction with enhanced monitoring
+      const tx = await signer.sendTransaction(txParams);
 
       console.log(`Arbitrage transaction submitted: ${tx.hash}`);
       return tx.hash;
