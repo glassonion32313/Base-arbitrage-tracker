@@ -244,7 +244,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { opportunityId, useFlashloan } = req.body;
       
       // Get opportunity details
-      const opportunity = await storage.getArbitrageOpportunity(opportunityId);
+      const opportunities = await storage.getArbitrageOpportunities();
+      const opportunity = opportunities.find(op => op.id === opportunityId);
       if (!opportunity) {
         return res.status(404).json({ error: 'Opportunity not found' });
       }
@@ -260,7 +261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Execute the trade
       const { tradeExecutor } = await import('./trade-executor');
-      const result = await tradeExecutor.executeArbitrage(opportunity, {
+      const result = await tradeExecutor.executeTrade(opportunity, {
         useFlashloan,
         flashloanAmount,
         autoOptimize: true
