@@ -170,6 +170,85 @@ export default function ArbitrageScanner() {
                 {/* Stats Cards */}
                 <StatsCards stats={stats as any} />
 
+                {/* Dashboard Info Blocks */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                  {/* Active Opportunities */}
+                  <div className="bg-dark-secondary border border-slate-700 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-slate-400">Active Opportunities</p>
+                        <p className="text-2xl font-bold text-white">{opportunities?.length || 0}</p>
+                      </div>
+                      <div className="p-2 bg-blue-500/10 rounded-lg">
+                        <TrendingUp className="h-5 w-5 text-blue-400" />
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2">
+                      {isConnected ? "Live data" : "Last updated"}
+                    </p>
+                  </div>
+
+                  {/* Best Profit */}
+                  <div className="bg-dark-secondary border border-slate-700 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-slate-400">Best Profit</p>
+                        <p className="text-2xl font-bold text-profit-green">
+                          {opportunities?.length > 0 
+                            ? `$${Math.max(...opportunities.map(o => parseFloat(o.netProfit || '0'))).toFixed(2)}`
+                            : '$0.00'
+                          }
+                        </p>
+                      </div>
+                      <div className="p-2 bg-green-500/10 rounded-lg">
+                        <TrendingUp className="h-5 w-5 text-green-400" />
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2">
+                      Per transaction
+                    </p>
+                  </div>
+
+                  {/* Average Gas Fee */}
+                  <div className="bg-dark-secondary border border-slate-700 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-slate-400">Avg Gas Fee</p>
+                        <p className="text-2xl font-bold text-yellow-400">
+                          {opportunities?.length > 0 
+                            ? `$${(opportunities.reduce((sum, o) => sum + parseFloat(o.gasCost || '0'), 0) / opportunities.length).toFixed(2)}`
+                            : '$0.00'
+                          }
+                        </p>
+                      </div>
+                      <div className="p-2 bg-yellow-500/10 rounded-lg">
+                        <Activity className="h-5 w-5 text-yellow-400" />
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2">
+                      Base network
+                    </p>
+                  </div>
+
+                  {/* Connection Status */}
+                  <div className="bg-dark-secondary border border-slate-700 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-slate-400">Connection</p>
+                        <p className={`text-2xl font-bold ${isConnected ? 'text-profit-green' : 'text-red-400'}`}>
+                          {isConnected ? 'Live' : 'Offline'}
+                        </p>
+                      </div>
+                      <div className={`p-2 rounded-lg ${isConnected ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                        <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2">
+                      {isConnected ? 'Real-time updates' : 'Manual refresh only'}
+                    </p>
+                  </div>
+                </div>
+
                 {/* Opportunities Table */}
                 <ArbitrageTable 
                   opportunities={opportunities as any}
