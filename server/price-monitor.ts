@@ -223,19 +223,23 @@ export class PriceMonitor {
     const sellDexFee = dexFees.sellFee;
     
     // Estimate gas cost (Base network average)
-    const gasCost = this.estimateGasCost();
+    const gasCost = await this.estimateGasCost();
     const tradeAmount = 1000; // $1000 trade size for calculation
     
-    // Calculate net profit accounting for all fees
-    const buyAmount = tradeAmount / lowestPrice.price;
-    const buyFeeAmount = tradeAmount * buyDexFee;
-    const actualBuyAmount = buyAmount * (1 - buyDexFee);
+    // Calculate net profit with correct fee accounting
+    // Step 1: Buy tokens (pay fees on input)
+    const actualBuySpend = tradeAmount; // Amount we spend
+    const buyFeeAmount = actualBuySpend * buyDexFee;
+    const amountForTokens = actualBuySpend - buyFeeAmount; // Amount after buy fee
+    const tokensReceived = amountForTokens / lowestPrice.price;
     
-    const sellValue = actualBuyAmount * highestPrice.price;
-    const sellFeeAmount = sellValue * sellDexFee;
-    const actualSellValue = sellValue * (1 - sellDexFee);
+    // Step 2: Sell tokens (pay fees on output)
+    const grossSellValue = tokensReceived * highestPrice.price;
+    const sellFeeAmount = grossSellValue * sellDexFee;
+    const actualSellValue = grossSellValue - sellFeeAmount; // Amount after sell fee
     
-    const estimatedProfit = actualSellValue - tradeAmount;
+    // Step 3: Calculate profit
+    const estimatedProfit = actualSellValue - actualBuySpend;
     const netProfit = estimatedProfit - gasCost;
     
     // Only create opportunity if profitable
@@ -322,8 +326,19 @@ export class PriceMonitor {
   }
 
   private estimateGasCost(): number {
-    // Base network typical gas costs for DEX operations
-    return Math.random() * 10 + 3; // $3-13 range
+    // Use realistic Base network gas costs
+    // Base network gas price: ~0.0015 gwei
+    // Arbitrage transaction: ~200,000 gas units
+    // ETH price: ~$3,500
+    
+    const gasUnits = 200000; // Conservative estimate for arbitrage
+    const gasPriceGwei = 0.0015; // Base network typical
+    const ethPrice = 3500; // ETH price estimate
+    
+    const gasCostEth = (gasUnits * gasPriceGwei) / 1e9;
+    const gasCostUSD = gasCostEth * ethPrice;
+    
+    return Math.max(0.10, Math.min(gasCostUSD, 5.0)); // Between $0.10-$5.00
   }
 
   private estimateLiquidity(pair: string): number {
