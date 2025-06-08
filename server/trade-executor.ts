@@ -9,6 +9,7 @@ interface TradeRequest {
   tradeAmount: string; // in USD
   maxSlippage: number; // percentage
   gasPrice?: string;
+  useFlashloan?: boolean;
 }
 
 interface TradeResult {
@@ -222,12 +223,20 @@ export class TradeExecutor {
         return { valid: false, error: 'No wallet configured' };
       }
 
-      // Check wallet balance
+      // Check wallet balance (different requirements for flashloan vs regular trades)
       const balance = await this.getWalletBalance(request.userId);
-      const requiredEth = parseFloat(request.tradeAmount) / 2650; // Approximate ETH needed
-
-      if (parseFloat(balance.eth) < requiredEth) {
-        return { valid: false, error: 'Insufficient ETH balance' };
+      
+      if (request.useFlashloan) {
+        // For flashloans, only need gas fees (0.005 ETH minimum)
+        if (parseFloat(balance.eth) < 0.005) {
+          return { valid: false, error: 'Insufficient ETH for gas fees (need ~0.005 ETH for flashloan)' };
+        }
+      } else {
+        // For regular trades, need full trade amount + gas fees
+        const requiredEth = parseFloat(request.tradeAmount) / 2650; // Approximate ETH needed
+        if (parseFloat(balance.eth) < requiredEth) {
+          return { valid: false, error: 'Insufficient ETH balance' };
+        }
       }
 
       // Validate opportunity exists and is profitable

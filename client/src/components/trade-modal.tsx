@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { TrendingUp, DollarSign, Clock, Shield, AlertTriangle } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { TrendingUp, DollarSign, Clock, Shield, AlertTriangle, Zap } from 'lucide-react';
 
 interface TradeModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ interface TradeModalProps {
 export default function TradeModal({ isOpen, onClose, opportunity }: TradeModalProps) {
   const [tradeAmount, setTradeAmount] = useState('100');
   const [maxSlippage, setMaxSlippage] = useState('2');
+  const [useFlashloan, setUseFlashloan] = useState(true);
   const [isExecuting, setIsExecuting] = useState(false);
   const { toast } = useToast();
 
@@ -43,7 +45,8 @@ export default function TradeModal({ isOpen, onClose, opportunity }: TradeModalP
         body: JSON.stringify({
           opportunityId: opportunity.id,
           tradeAmount: tradeAmount,
-          maxSlippage: parseFloat(maxSlippage)
+          maxSlippage: parseFloat(maxSlippage),
+          useFlashloan: useFlashloan
         })
       });
 
@@ -142,6 +145,22 @@ export default function TradeModal({ isOpen, onClose, opportunity }: TradeModalP
                 className="mt-1 bg-dark-tertiary border-slate-600 text-white"
                 placeholder="2"
                 step="0.1"
+              />
+            </div>
+
+            {/* Flashloan Option */}
+            <div className="flex items-center justify-between p-3 bg-blue-900/20 border border-blue-700/50 rounded-lg">
+              <div className="flex items-center gap-2">
+                <Zap className="h-4 w-4 text-blue-400" />
+                <div>
+                  <Label className="text-sm font-medium text-blue-200">Use Flashloan</Label>
+                  <p className="text-xs text-blue-300">Execute without upfront capital</p>
+                </div>
+              </div>
+              <Switch
+                checked={useFlashloan}
+                onCheckedChange={setUseFlashloan}
+                className="data-[state=checked]:bg-blue-600"
               />
             </div>
           </div>

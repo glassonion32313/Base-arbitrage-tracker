@@ -410,7 +410,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Enhanced trade execution with validation
   app.post("/api/trades/execute", requireAuth, async (req: any, res) => {
     try {
-      const { opportunityId, tradeAmount, maxSlippage, gasPrice } = req.body;
+      const { opportunityId, tradeAmount, maxSlippage, gasPrice, useFlashloan } = req.body;
       
       if (!opportunityId || !tradeAmount) {
         return res.status(400).json({ message: 'Opportunity ID and trade amount are required' });
@@ -421,7 +421,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         opportunityId: parseInt(opportunityId),
         tradeAmount: tradeAmount.toString(),
         maxSlippage: maxSlippage || 2, // Default 2% slippage
-        gasPrice
+        gasPrice,
+        useFlashloan: useFlashloan || false
       };
 
       // Validate trade before execution
