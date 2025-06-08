@@ -4,9 +4,11 @@ import WalletConnect from "@/components/wallet-connect";
 import ArbitrageTable from "@/components/arbitrage-table";
 import StatsCards from "@/components/stats-cards";
 import FiltersSidebar from "@/components/filters-sidebar";
+import MonitoringDashboard from "@/components/monitoring-dashboard";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, TrendingUp } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RefreshCw, TrendingUp, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ArbitrageScanner() {

@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { priceMonitor } from "./price-monitor";
 import { insertArbitrageOpportunitySchema, insertTransactionSchema } from "@shared/schema";
 import { z } from "zod";
 
@@ -182,6 +183,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to set setting" });
     }
   });
+
+  // Price monitoring control
+  app.get("/api/monitor/status", (req, res) => {
+    res.json(priceMonitor.getStatus());
+  });
+
+  app.post("/api/monitor/start", (req, res) => {
+    try {
+      priceMonitor.startMonitoring();
+      res.json({ message: "Price monitoring started", status: priceMonitor.getStatus() });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to start monitoring" });
+    }
+  });
+
+  app.post("/api/monitor/stop", (req, res) => {
+    try {
+      priceMonitor.stopMonitoring();
+      res.json({ message: "Price monitoring stopped", status: priceMonitor.getStatus() });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to stop monitoring" });
+    }
+  });
+
+  // Start price monitoring automatically
+  priceMonitor.startMonitoring();
 
   const httpServer = createServer(app);
   return httpServer;
