@@ -12,7 +12,7 @@ import { useMutation } from '@tanstack/react-query';
 export default function AccountManager() {
   const [showPrivateKey, setShowPrivateKey] = useState(false);
   const [privateKeyInput, setPrivateKeyInput] = useState('');
-  const [user, setUser] = useState<any>(null);
+  const { user, logout } = useAuth();
   const { toast } = useToast();
 
   // Get current user from localStorage
