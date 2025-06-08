@@ -261,16 +261,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Execute the trade
       const { tradeExecutor } = await import('./trade-executor');
-      const result = await tradeExecutor.executeTrade(opportunity, {
-        useFlashloan,
-        flashloanAmount,
-        autoOptimize: true
-      });
+      const result = await tradeExecutor.executeTrade(opportunity);
 
       res.json(result);
     } catch (error) {
       console.error('Error executing automated arbitrage:', error);
       res.status(500).json({ error: 'Failed to execute arbitrage' });
+    }
+  });
+
+  // Generate test opportunities for testing automated execution
+  app.post('/api/test/generate-opportunities', async (req, res) => {
+    try {
+      const testOpportunities = [
+        {
+          tokenPair: 'WETH/USDC',
+          token0Symbol: 'WETH',
+          token1Symbol: 'USDC',
+          token0Address: '0x4200000000000000000000000000000000000006',
+          token1Address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+          buyDex: 'Uniswap V3',
+          sellDex: 'SushiSwap',
+          buyPrice: '3245.50',
+          sellPrice: '3252.80',
+          priceDifference: '0.22',
+          estimatedProfit: '7.30',
+          netProfit: '6.10',
+          gasCost: '1.20',
+          amountIn: '1000',
+          liquidity: 'High',
+          confidence: 'High'
+        },
+        {
+          tokenPair: 'USDC/USDT',
+          token0Symbol: 'USDC',
+          token1Symbol: 'USDT',
+          token0Address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+          token1Address: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2',
+          buyDex: 'BaseSwap',
+          sellDex: 'Aerodrome',
+          buyPrice: '0.9998',
+          sellPrice: '1.0003',
+          priceDifference: '0.05',
+          estimatedProfit: '3.50',
+          netProfit: '2.70',
+          gasCost: '0.80',
+          amountIn: '10000',
+          liquidity: 'Medium',
+          confidence: 'Medium'
+        }
+      ];
+
+      for (const opportunity of testOpportunities) {
+        await storage.createArbitrageOpportunity(opportunity);
+      }
+
+      res.json({ 
+        message: 'Test opportunities generated successfully',
+        count: testOpportunities.length 
+      });
+    } catch (error) {
+      console.error('Error generating test opportunities:', error);
+      res.status(500).json({ error: 'Failed to generate test opportunities' });
     }
   });
 
