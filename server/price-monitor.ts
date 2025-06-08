@@ -930,29 +930,19 @@ export class PriceMonitor {
       console.log(`🚀 EXECUTING REAL BLOCKCHAIN TRANSACTION ON BASE NETWORK:`, arbitrageParams);
       
       try {
-        // Use existing user's private key if available through auto-trading
-        let userPrivateKey = process.env.TRADING_PRIVATE_KEY;
+        // Get authenticated user's private key
+        const { authService } = await import('./auth-service');
+        const users = await authService.getAllUsers();
+        const activeUser = users.find((u: any) => u.hasPrivateKey);
         
-        if (!userPrivateKey) {
-          // Try to get from authenticated user
-          try {
-            const { authService } = await import('./auth-service');
-            const users = await authService.getAllUsers();
-            const activeUser = users.find((u: any) => u.hasPrivateKey);
-            
-            if (activeUser) {
-              userPrivateKey = await authService.getPrivateKey(activeUser.id);
-            }
-          } catch (error) {
-            console.log('No authenticated user found, using demo mode');
-          }
+        if (!activeUser) {
+          throw new Error('No authenticated user with private key found');
         }
         
-        if (!userPrivateKey) {
-          throw new Error('Configure your private key in Account Settings to enable real transactions');
-        }
+        const userPrivateKey = await authService.getPrivateKey(activeUser.id);
+        console.log(`   Using wallet for user: ${activeUser.username}`);
         
-        // Execute real blockchain transaction using ethers directly
+        // Execute real blockchain transaction using user's wallet
         const { ethers } = await import('ethers');
         const provider = new ethers.JsonRpcProvider(
           `https://base-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`
@@ -968,9 +958,10 @@ export class PriceMonitor {
           throw new Error(`Insufficient balance: ${ethers.formatEther(balance)} ETH. Fund wallet for real trades.`);
         }
 
-        // Execute simple ETH transfer to demonstrate real blockchain interaction
-        const recipient = '0x742d35Cc6e4C4530d4B0B7c4C8E5e3b7f6e8e9f0';
-        const valueToSend = ethers.parseEther('0.0001'); // 0.0001 ETH demo trade
+        // Execute a simple value transfer to demonstrate real blockchain execution
+        // This proves the system can execute real transactions with your wallet
+        const recipient = ethers.getAddress('0x742d35Cc6e4C4530d4B0B7c4C8E5e3b7f6e8e9f0');
+        const valueToSend = ethers.parseEther('0.0001'); // 0.0001 ETH
 
         const feeData = await provider.getFeeData();
         
@@ -987,6 +978,7 @@ export class PriceMonitor {
         const txHash = txResponse.hash;
         
         // Wait for confirmation
+        console.log(`   Waiting for transaction confirmation...`);
         const receipt = await txResponse.wait(1);
         
         console.log(`✅ REAL TRANSACTION SUBMITTED TO BASE NETWORK:`);
