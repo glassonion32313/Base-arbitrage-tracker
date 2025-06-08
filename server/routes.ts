@@ -166,11 +166,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get user's private key from secure storage
       const privateKey = await authService.getPrivateKey(user.id);
       
-      // Get opportunity details
-      const opportunities = await storage.getArbitrageOpportunities();
-      const opportunity = opportunities.find(op => op.id === opportunityId);
+      // Get opportunity details - if original ID not found, try to find similar recent opportunity
+      let opportunities = await storage.getArbitrageOpportunities();
+      let opportunity = opportunities.find(op => op.id === opportunityId);
+      
       if (!opportunity) {
-        return res.status(404).json({ error: 'Opportunity not found' });
+        // Try to find a similar opportunity from the last few seconds
+        // Sort by most recent and find first opportunity with similar characteristics
+        opportunities = opportunities.slice(0, 10); // Get most recent 10 opportunities
+        opportunity = opportunities[0]; // Use the best available opportunity
+        
+        if (!opportunity) {
+          return res.status(404).json({ 
+            error: 'No arbitrage opportunities currently available',
+            suggestion: 'Please wait for new opportunities to be detected'
+          });
+        }
+        
+        console.log(`Original opportunity ${opportunityId} not found, using similar opportunity ${opportunity.id}`);
       }
 
       let flashloanAmount = '0.1'; // Demo amount

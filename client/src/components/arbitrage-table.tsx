@@ -96,12 +96,29 @@ export default function ArbitrageTable({ opportunities, isLoading, onRefresh }: 
       queryClient.invalidateQueries({ queryKey: ['/api/opportunities'] });
       queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
     },
-    onError: (error, { opportunityId }) => {
-      toast({
-        title: "Execution Failed",
-        description: error.message || "Failed to execute arbitrage trade",
-        variant: "destructive",
-      });
+    onError: (error: any, { opportunityId }) => {
+      const errorMessage = error.message || "Failed to execute arbitrage trade";
+      
+      if (errorMessage.includes("Private key not configured")) {
+        toast({
+          title: "Private Key Required",
+          description: "Please add your private key in Account Settings first",
+          variant: "destructive",
+        });
+      } else if (errorMessage.includes("No arbitrage opportunities")) {
+        toast({
+          title: "Opportunity Expired",
+          description: "This opportunity is no longer available. New ones are detected every few seconds.",
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Execution Failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
+      
       setExecutingOpportunities(prev => {
         const next = new Set(prev);
         next.delete(opportunityId);
