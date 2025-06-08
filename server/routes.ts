@@ -159,7 +159,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!user.hasPrivateKey) {
         return res.status(400).json({ 
-          error: 'Private key not configured. Please add your private key in account settings first.' 
+          error: 'Private key not configured. Please add your private key in account settings first.',
+          needsPrivateKey: true
+        });
+      }
+
+      // Additional safety checks for live trading
+      const profitValue = parseFloat(opportunity.estimatedProfit);
+      if (profitValue < 5) {
+        return res.status(400).json({
+          error: 'Minimum profit threshold not met for live trading',
+          details: 'Live trades require at least $5 estimated profit to cover gas fees',
+          currentProfit: profitValue
         });
       }
 
@@ -225,9 +236,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           minProfit: '0.001'
         };
 
-        // For demonstration purposes, simulate transaction execution
-        // Real blockchain execution requires significant capital and gas fees
-        console.log('Simulating arbitrage execution for demonstration:', {
+        console.log('Executing LIVE arbitrage transaction:', {
           opportunity: opportunity.tokenPair,
           buyDex: opportunity.buyDex,
           sellDex: opportunity.sellDex,
@@ -236,8 +245,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           user: user.username
         });
         
-        // Generate a realistic demo transaction hash
-        const txHash = '0x' + Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join('');
+        // Execute real blockchain transaction
+        const txHash = await contractService.executeArbitrage(arbitrageParams, privateKey);
         
         // Record transaction in database
         await storage.createTransaction({

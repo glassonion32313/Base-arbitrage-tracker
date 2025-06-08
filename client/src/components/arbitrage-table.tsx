@@ -85,8 +85,8 @@ export default function ArbitrageTable({ opportunities, isLoading, onRefresh }: 
     },
     onSuccess: (data, { opportunityId }) => {
       toast({
-        title: "Real Blockchain Transaction Submitted",
-        description: `Transaction Hash: ${data.txHash}. View on BaseScan: ${data.explorerUrl}`,
+        title: "Live Transaction Submitted to Base Network",
+        description: `TX: ${data.txHash.slice(0, 10)}... - Check BaseScan for confirmation`,
       });
       setExecutingOpportunities(prev => {
         const next = new Set(prev);
