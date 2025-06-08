@@ -22,6 +22,8 @@ interface AutoTradingSettings {
   maxConcurrentTrades: number;
   cooldownBetweenTrades: number;
   onlyFlashloans: boolean;
+  flashloanSize: number;
+  flashloanStrategy: 'fixed' | 'percentage' | 'dynamic';
   enabledDexes: string[];
   riskLevel: 'conservative' | 'moderate' | 'aggressive';
 }
@@ -59,6 +61,8 @@ export default function AutoTrading() {
     maxConcurrentTrades: 2,
     cooldownBetweenTrades: 60,
     onlyFlashloans: true,
+    flashloanSize: 1000,
+    flashloanStrategy: 'fixed',
     enabledDexes: ['uniswap', 'sushiswap', 'baseswap'],
     riskLevel: 'conservative'
   });
@@ -489,6 +493,55 @@ export default function AutoTrading() {
             />
             <Label htmlFor="flashloans-only">Use Flashloans Only</Label>
           </div>
+
+          {settings.onlyFlashloans && (
+            <div className="space-y-4 p-4 border rounded-lg bg-blue-50/50 dark:bg-blue-950/20">
+              <div className="flex items-center gap-2">
+                <Zap className="h-4 w-4 text-blue-600" />
+                <span className="font-medium text-blue-900 dark:text-blue-100">Flashloan Configuration</span>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Flashloan Size ($)</Label>
+                  <Input
+                    type="number"
+                    value={settings.flashloanSize}
+                    onChange={(e) => updateSettings('flashloanSize', parseFloat(e.target.value))}
+                    placeholder="1000"
+                  />
+                  <p className="text-xs text-muted-foreground">Amount to borrow for arbitrage</p>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Flashloan Strategy</Label>
+                  <Select 
+                    value={settings.flashloanStrategy} 
+                    onValueChange={(value: 'fixed' | 'percentage' | 'dynamic') => updateSettings('flashloanStrategy', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fixed">Fixed Amount</SelectItem>
+                      <SelectItem value="percentage">Percentage of Liquidity</SelectItem>
+                      <SelectItem value="dynamic">Dynamic Sizing</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {settings.flashloanStrategy === 'fixed' && 'Use fixed flashloan amount'}
+                    {settings.flashloanStrategy === 'percentage' && 'Size based on available liquidity'}
+                    {settings.flashloanStrategy === 'dynamic' && 'Auto-adjust based on profit potential'}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="text-sm text-blue-700 dark:text-blue-300 bg-blue-100/50 dark:bg-blue-900/20 p-3 rounded">
+                <div className="font-medium mb-1">Capital Efficiency</div>
+                <div>Only ~0.005 ETH needed for gas fees instead of full trade amount</div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
