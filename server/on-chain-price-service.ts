@@ -122,33 +122,8 @@ export class OnChainPriceService {
       }
     }
 
-    // Enhanced detection: Add synthetic price variations to simulate real arbitrage opportunities
-    const enhancedPrices: TokenPrice[] = [...prices];
-    const dexNames = ['Uniswap V3', 'SushiSwap', 'BaseSwap', 'Aerodrome', 'PancakeSwap'];
-    
-    // Generate additional price variations for better opportunity detection
-    for (const basePrice of prices) {
-      for (const dexName of dexNames) {
-        if (dexName !== basePrice.dex) {
-          // Create 0.1% to 0.8% price variations
-          const variation = 0.001 + Math.random() * 0.007;
-          const direction = Math.random() > 0.5 ? 1 : -1;
-          const newPrice = basePrice.price * (1 + direction * variation);
-          
-          enhancedPrices.push({
-            symbol: basePrice.symbol,
-            address: basePrice.address,
-            price: newPrice,
-            dex: dexName,
-            timestamp: new Date(),
-            blockNumber: currentBlock
-          });
-        }
-      }
-    }
-    
-    console.log(`Fetched ${enhancedPrices.length} enhanced on-chain prices from block ${currentBlock}`);
-    return enhancedPrices;
+    console.log(`Fetched ${prices.length} authentic on-chain prices from block ${currentBlock}`);
+    return prices;
   }
 
   private async getPairPrice(
@@ -160,11 +135,21 @@ export class OnChainPriceService {
     dexName: string
   ): Promise<{ token0Price: number; token1Price: number } | null> {
     try {
+      // Attempt to fetch real on-chain data first
+      let result = null;
+      
       if (dexName === 'Uniswap') {
-        return await this.getUniswapV3Price(factoryAddress, token0Address, token1Address);
+        result = await this.getUniswapV3Price(factoryAddress, token0Address, token1Address);
       } else {
-        return await this.getUniswapV2Price(factoryAddress, token0Address, token1Address);
+        result = await this.getUniswapV2Price(factoryAddress, token0Address, token1Address);
       }
+      
+      // Only return actual on-chain data, no fallbacks
+      if (!result) {
+        console.log(`No on-chain data available for ${token0Symbol}/${token1Symbol} on ${dexName}`);
+      }
+      
+      return result;
     } catch (error) {
       console.error(`Error getting ${dexName} price for ${token0Symbol}/${token1Symbol}:`, error);
       return null;
