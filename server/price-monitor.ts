@@ -237,58 +237,105 @@ export class PriceMonitor {
 
   // Simulated price fetchers (in production, these would call real APIs)
   private async fetchUniswapPrices(): Promise<TokenPrice[]> {
-    const pairs = ['WETH/USDC', 'WBTC/USDT', 'LINK/USDT', 'UNI/USDC'];
-    return pairs.map(pair => {
-      const basePrice = this.getBasePrice(pair);
-      return {
-        symbol: pair,
-        address: this.getTokenAddress(pair.split('/')[0]),
-        price: basePrice * (0.995 + Math.random() * 0.01), // Uniswap tends to be competitive
-        dex: "Uniswap V3",
-        timestamp: new Date()
-      };
-    });
+    try {
+      const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum,bitcoin,chainlink,uniswap&vs_currencies=usd');
+      if (!response.ok) throw new Error(`CoinGecko API error: ${response.status}`);
+      
+      const data = await response.json();
+      const prices: TokenPrice[] = [];
+      
+      const tokens = [
+        { symbol: 'WETH', coinId: 'ethereum' },
+        { symbol: 'WBTC', coinId: 'bitcoin' },
+        { symbol: 'LINK', coinId: 'chainlink' },
+        { symbol: 'UNI', coinId: 'uniswap' }
+      ];
+      
+      tokens.forEach(token => {
+        if (data[token.coinId]) {
+          prices.push({
+            symbol: `${token.symbol}/USDC`,
+            address: this.getTokenAddress(token.symbol),
+            price: data[token.coinId].usd * (0.9995 + Math.random() * 0.001),
+            dex: "Uniswap V3",
+            timestamp: new Date()
+          });
+        }
+      });
+      
+      return prices;
+    } catch (error) {
+      console.error('Failed to fetch Uniswap prices:', error);
+      return [];
+    }
   }
 
   private async fetchSushiSwapPrices(): Promise<TokenPrice[]> {
-    const pairs = ['WETH/USDC', 'WBTC/USDT', 'LINK/USDT', 'AAVE/USDT'];
-    return pairs.map(pair => {
-      const basePrice = this.getBasePrice(pair);
-      return {
-        symbol: pair,
-        address: this.getTokenAddress(pair.split('/')[0]),
-        price: basePrice * (0.99 + Math.random() * 0.02), // SushiSwap with some variance
-        dex: "SushiSwap",
-        timestamp: new Date()
-      };
-    });
+    try {
+      const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum,bitcoin,chainlink,uniswap&vs_currencies=usd');
+      if (!response.ok) throw new Error(`CoinGecko API error: ${response.status}`);
+      
+      const data = await response.json();
+      const prices: TokenPrice[] = [];
+      
+      const tokens = [
+        { symbol: 'WETH', coinId: 'ethereum' },
+        { symbol: 'WBTC', coinId: 'bitcoin' },
+        { symbol: 'LINK', coinId: 'chainlink' },
+        { symbol: 'UNI', coinId: 'uniswap' }
+      ];
+      
+      tokens.forEach(token => {
+        if (data[token.coinId]) {
+          prices.push({
+            symbol: `${token.symbol}/USDC`,
+            address: this.getTokenAddress(token.symbol),
+            price: data[token.coinId].usd * (0.998 + Math.random() * 0.004),
+            dex: "SushiSwap",
+            timestamp: new Date()
+          });
+        }
+      });
+      
+      return prices;
+    } catch (error) {
+      console.error('Failed to fetch SushiSwap prices:', error);
+      return [];
+    }
   }
 
   private async fetchBaseSwapPrices(): Promise<TokenPrice[]> {
-    const pairs = ['WETH/USDC', 'WBTC/USDT', 'LINK/USDT'];
-    return pairs.map(pair => {
-      const basePrice = this.getBasePrice(pair);
-      return {
-        symbol: pair,
-        address: this.getTokenAddress(pair.split('/')[0]),
-        price: basePrice * (0.985 + Math.random() * 0.03), // BaseSwap with more variance
-        dex: "BaseSwap",
-        timestamp: new Date()
-      };
-    });
-  }
-
-  private getBasePrice(pair: string): number {
-    // Current market prices (would be fetched from price oracle in production)
-    const basePrices: Record<string, number> = {
-      'WETH/USDC': 2485.50,
-      'WBTC/USDT': 43280.75,
-      'LINK/USDT': 14.35,
-      'UNI/USDC': 8.25,
-      'AAVE/USDT': 165.80
-    };
-    
-    return basePrices[pair] || 100;
+    try {
+      const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum,bitcoin,chainlink,uniswap&vs_currencies=usd');
+      if (!response.ok) throw new Error(`CoinGecko API error: ${response.status}`);
+      
+      const data = await response.json();
+      const prices: TokenPrice[] = [];
+      
+      const tokens = [
+        { symbol: 'WETH', coinId: 'ethereum' },
+        { symbol: 'WBTC', coinId: 'bitcoin' },
+        { symbol: 'LINK', coinId: 'chainlink' },
+        { symbol: 'UNI', coinId: 'uniswap' }
+      ];
+      
+      tokens.forEach(token => {
+        if (data[token.coinId]) {
+          prices.push({
+            symbol: `${token.symbol}/USDC`,
+            address: this.getTokenAddress(token.symbol),
+            price: data[token.coinId].usd * (0.996 + Math.random() * 0.008),
+            dex: "BaseSwap",
+            timestamp: new Date()
+          });
+        }
+      });
+      
+      return prices;
+    } catch (error) {
+      console.error('Failed to fetch BaseSwap prices:', error);
+      return [];
+    }
   }
 
   isMonitoring(): boolean {

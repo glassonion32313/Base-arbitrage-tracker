@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import WalletConnect from "@/components/wallet-connect";
+import RealWalletConnect from "@/components/real-wallet-connect";
 import ArbitrageTable from "@/components/arbitrage-table";
 import StatsCards from "@/components/stats-cards";
 import FiltersSidebar from "@/components/filters-sidebar";
@@ -96,7 +96,7 @@ export default function ArbitrageScanner() {
               </Button>
 
               {/* Wallet Connection */}
-              <WalletConnect />
+              <RealWalletConnect />
             </div>
           </div>
         </div>
