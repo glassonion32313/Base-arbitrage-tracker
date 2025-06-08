@@ -43,8 +43,12 @@ export class AutoTrader {
       this.stopAutoTrading(userId);
 
       // Validate user has private key
-      const privateKey = await authService.getPrivateKey(userId);
-      if (!privateKey) {
+      try {
+        const privateKey = await authService.getPrivateKey(userId);
+        if (!privateKey) {
+          throw new Error('User private key not configured');
+        }
+      } catch (error) {
         throw new Error('User private key not configured');
       }
 
@@ -137,7 +141,7 @@ export class AutoTrader {
             tradeAmount = settings.flashloanSize;
             break;
           case 'percentage':
-            const liquidity = parseFloat(opportunity.liquidity);
+            const liquidity = parseFloat(opportunity.liquidity || '1000000');
             tradeAmount = Math.min(liquidity * 0.1, settings.flashloanSize); // 10% of liquidity
             break;
           case 'dynamic':
@@ -204,10 +208,10 @@ export class AutoTrader {
 
   // Reset daily stats at midnight
   resetDailyStats() {
-    for (const [userId, trader] of this.activeTraders) {
+    this.activeTraders.forEach((trader, userId) => {
       trader.status.dailyProfit = 0;
       trader.status.dailyLoss = 0;
-    }
+    });
   }
 }
 

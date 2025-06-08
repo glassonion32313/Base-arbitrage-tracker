@@ -6,6 +6,7 @@ import { priceMonitor } from "./price-monitor";
 import { insertArbitrageOpportunitySchema, insertTransactionSchema, insertUserAccountSchema } from "@shared/schema";
 import { authService } from "./auth-service";
 import { tradeExecutor } from "./trade-executor";
+import { autoTrader } from "./auto-trader";
 import { z } from "zod";
 
 import { getContractIntegration } from "./contract-integration";
@@ -477,6 +478,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const validation = await tradeExecutor.validateTrade(tradeRequest);
       res.json(validation);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Server-side auto-trading API routes
+  app.post("/api/auto-trading/start", requireAuth, async (req: any, res) => {
+    try {
+      const settings = req.body;
+      const userId = req.user.id;
+      
+      const success = await autoTrader.startAutoTrading(userId, {
+        ...settings,
+        userId
+      });
+      
+      if (success) {
+        res.json({ 
+          success: true,
+          message: 'Auto trading started on server',
+          isServerSide: true
+        });
+      } else {
+        res.status(400).json({ 
+          success: false,
+          message: 'Failed to start auto trading'
+        });
+      }
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/auto-trading/stop", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const success = await autoTrader.stopAutoTrading(userId);
+      
+      res.json({ 
+        success,
+        message: success ? 'Auto trading stopped' : 'No active auto trading found'
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/auto-trading/status", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const status = autoTrader.getAutoTradingStatus(userId);
+      const isActive = autoTrader.isAutoTradingActive(userId);
+      
+      res.json({
+        isActive,
+        status: status || {
+          isActive: false,
+          totalTrades: 0,
+          successfulTrades: 0,
+          totalProfit: 0,
+          dailyProfit: 0,
+          dailyLoss: 0,
+          activeTrades: 0,
+          lastTradeTime: null,
+          currentStreak: 0
+        },
+        isServerSide: true
+      });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
