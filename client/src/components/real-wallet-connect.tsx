@@ -4,6 +4,20 @@ import { Badge } from "@/components/ui/badge";
 import { Wallet, ExternalLink, AlertTriangle, Copy, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+declare global {
+  interface Window {
+    ethereum?: {
+      isMetaMask?: boolean;
+      request: (args: { method: string; params?: any[] }) => Promise<any>;
+      on: (event: string, handler: (...args: any[]) => void) => void;
+      removeListener: (event: string, handler: (...args: any[]) => void) => void;
+      removeAllListeners?: () => void;
+      selectedAddress?: string;
+      chainId?: string;
+    };
+  }
+}
+
 interface WalletState {
   isConnected: boolean;
   address: string | null;
@@ -48,14 +62,18 @@ export default function RealWalletConnect() {
   }, []);
 
   const checkConnection = async () => {
-    if (!window.ethereum) return;
+    if (!window.ethereum) {
+      console.log('MetaMask not detected');
+      return;
+    }
 
     try {
       const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-      const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-
-      if (accounts.length > 0) {
+      
+      if (accounts && accounts.length > 0) {
+        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
         const balance = await getBalance(accounts[0]);
+        
         setWallet({
           isConnected: true,
           address: accounts[0],
@@ -63,29 +81,41 @@ export default function RealWalletConnect() {
           chainId,
           isConnecting: false,
         });
+        
+        console.log('Wallet connected:', accounts[0]);
+      } else {
+        console.log('No accounts found');
       }
     } catch (error) {
       console.error('Failed to check connection:', error);
+      setWallet(prev => ({ ...prev, isConnecting: false }));
     }
   };
 
   const setupEventListeners = () => {
     if (!window.ethereum) return;
 
-    window.ethereum.on('accountsChanged', (accounts: string[]) => {
+    const handleAccountsChanged = (accounts: string[]) => {
+      console.log('Accounts changed:', accounts);
       if (accounts.length === 0) {
         disconnect();
       } else {
         checkConnection();
       }
-    });
+    };
 
-    window.ethereum.on('chainChanged', () => {
+    const handleChainChanged = (chainId: string) => {
+      console.log('Chain changed:', chainId);
       checkConnection();
-    });
+    };
+
+    window.ethereum.on('accountsChanged', handleAccountsChanged);
+    window.ethereum.on('chainChanged', handleChainChanged);
   };
 
   const getBalance = async (address: string): Promise<string> => {
+    if (!window.ethereum) return '0.0000';
+    
     try {
       const balance = await window.ethereum.request({
         method: 'eth_getBalance',
