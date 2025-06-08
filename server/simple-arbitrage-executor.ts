@@ -45,9 +45,25 @@ export class SimpleArbitrageExecutor {
 
   async executeRealArbitrage(params: SimpleArbitrageParams, privateKey: string): Promise<string> {
     try {
-      // For now, execute a simple transaction to prove the wallet works
-      // This demonstrates real blockchain interaction with your funded wallet
-      return await this.executeDirectSwap(params, privateKey);
+      const wallet = new ethers.Wallet(privateKey, this.provider);
+      
+      // Use the working contract integration for real arbitrage
+      const contractService = await import('./contract-service');
+      const contract = contractService.getContractService();
+      
+      // Execute real arbitrage through the deployed contract
+      const txHash = await contract.executeArbitrage({
+        tokenA: params.tokenA,
+        tokenB: params.tokenB,
+        amountIn: params.amountIn,
+        buyDex: params.buyDex,
+        sellDex: params.sellDex,
+        minProfit: params.minProfit
+      }, privateKey);
+      
+      console.log(`✅ REAL ARBITRAGE EXECUTED: ${txHash}`);
+      return txHash;
+      
     } catch (error) {
       console.error('Real arbitrage execution failed:', error);
       throw error;
