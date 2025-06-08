@@ -965,8 +965,10 @@ export class PriceMonitor {
    Bridge: https://bridge.base.org/
         `);
         
-        // Force execution with current balance - user has sufficient funds
-        console.log(`✅ WALLET FUNDED: ${ethers.formatEther(balance)} ETH available for trading`);
+        // Stop execution - insufficient funds for gas
+        if (balance < ethers.parseEther('0.0001')) {
+          throw new Error(`INSUFFICIENT FUNDS: Only ${ethers.formatEther(balance)} ETH remaining. Add more ETH to continue trading.`);
+        }
 
         // Execute direct transaction using simple executor to avoid contract issues
         const simpleExecutor = await import('./simple-arbitrage-executor');
