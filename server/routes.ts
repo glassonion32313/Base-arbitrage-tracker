@@ -254,13 +254,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const signer = new ethers.Wallet(privateKey, provider);
         
-        // Submit live transaction to Base network with dynamic gas pricing
-        const feeData = await provider.getFeeData();
-        const tx = await signer.sendTransaction({
+        // Estimate gas and submit transaction with safety margins
+        const txParams = {
           to: '0x675f26375aB7E5a35279CF3AE37C26a3004b9ae4',
-          value: ethers.parseEther('0.0001'), // Small demonstration amount
-          gasLimit: 21000,
-          gasPrice: feeData.gasPrice
+          value: ethers.parseEther('0.0001')
+        };
+
+        // Get current network conditions
+        const feeData = await provider.getFeeData();
+        let gasEstimate: bigint;
+
+        try {
+          gasEstimate = await provider.estimateGas({
+            ...txParams,
+            from: signer.address
+          });
+          gasEstimate = gasEstimate * BigInt(2); // 2x safety margin
+        } catch (estimateError) {
+          console.warn('Gas estimation failed, using fallback');
+          gasEstimate = BigInt(300000); // Fallback gas limit
+        }
+
+        const tx = await signer.sendTransaction({
+          ...txParams,
+          gasLimit: gasEstimate,
+          gasPrice: feeData.gasPrice ? feeData.gasPrice * BigInt(2) : ethers.parseUnits('1', 'gwei')
         });
         
         const txHash = tx.hash;
