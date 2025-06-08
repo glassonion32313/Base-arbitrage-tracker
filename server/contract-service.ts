@@ -100,8 +100,8 @@ export class ContractService {
       const buyDex = this.getDexRouter('BaseSwap');
       const sellDex = this.getDexRouter('SushiSwap');
 
-      // Use very small amounts for testing - 0.001 WETH (~$2-3)
-      const safeAmount = ethers.parseEther("0.001");
+      // Use minimal amounts to avoid contract overflow - equivalent to ~$0.01
+      const safeAmount = ethers.parseUnits("10000", 6); // 0.01 USDC in wei (6 decimals)
 
       // Create struct parameter as expected by contract
       const arbitrageStruct = {

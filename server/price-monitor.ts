@@ -969,11 +969,11 @@ export class PriceMonitor {
           throw new Error(`FUND WALLET: Send ETH to ${wallet.address} on Base network to enable real trades.`);
         }
 
-        // Execute arbitrage transaction using contract service with your wallet
-        const contractService = await import('./contract-service');
-        const contract = contractService.getContractService();
+        // Execute direct transaction using simple executor to avoid contract issues
+        const simpleExecutor = await import('./simple-arbitrage-executor');
+        const executor = simpleExecutor.simpleArbitrageExecutor;
         
-        const txHash = await contract.executeArbitrage(arbitrageParams, userPrivateKey);
+        const txHash = await executor.executeRealArbitrage(arbitrageParams, userPrivateKey);
         
         // Wait for confirmation
         console.log(`   Waiting for transaction confirmation...`);
