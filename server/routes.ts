@@ -27,7 +27,30 @@ function broadcastToClients(data: any) {
   });
 }
 
+
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Authentication middleware
+  const requireAuth = async (req: any, res: any, next: any) => {
+    try {
+      const token = req.headers.authorization?.replace('Bearer ', '');
+      
+      if (!token) {
+        return res.status(401).json({ message: 'Authorization token required' });
+      }
+
+      const user = await authService.validateToken(token);
+      if (!user) {
+        return res.status(401).json({ message: 'Invalid or expired token' });
+      }
+
+      req.user = user;
+      next();
+    } catch (error) {
+      return res.status(401).json({ message: 'Authentication failed' });
+    }
+  };
+
   // Get arbitrage opportunities with optional filters
   app.get("/api/opportunities", async (req, res) => {
     try {
@@ -238,10 +261,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Execute arbitrage with automatic flashloan
-  app.post('/api/arbitrage/execute-auto', async (req, res) => {
+  // Execute arbitrage with automatic flashloan (demo mode - requires wallet connection)
+  app.post('/api/arbitrage/execute-auto', async (req: any, res) => {
     try {
-      const { opportunityId, useFlashloan } = req.body;
+      const { opportunityId, useFlashloan, privateKey } = req.body;
       
       // Get opportunity details
       const opportunities = await storage.getArbitrageOpportunities();
@@ -250,7 +273,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Opportunity not found' });
       }
 
-      let flashloanAmount = '0';
+      // For demo purposes, require private key in request body
+      if (!privateKey) {
+        return res.status(400).json({ 
+          error: 'Private key required for transaction execution. This is a demo - in production, use secure wallet integration.' 
+        });
+      }
+
+      let flashloanAmount = '0.1'; // Demo amount
       if (useFlashloan) {
         const { balancerService } = await import('./balancer-service');
         flashloanAmount = balancerService.getOptimalFlashloanAmount(
@@ -259,11 +289,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       }
 
-      // Execute the trade
-      const { tradeExecutor } = await import('./trade-executor');
-      const result = await tradeExecutor.executeTrade(opportunity);
+      // Execute real blockchain transaction
+      if (!contractService) {
+        return res.status(503).json({ error: 'Contract service not available' });
+      }
 
-      res.json(result);
+      try {
+        // Prepare arbitrage parameters for real transaction
+        const arbitrageParams = {
+          tokenA: opportunity.token0Address,
+          tokenB: opportunity.token1Address,
+          amountIn: flashloanAmount,
+          buyDex: opportunity.buyDex,
+          sellDex: opportunity.sellDex,
+          minProfit: '0.001'
+        };
+
+        // Execute real blockchain transaction
+        const txHash = await contractService.executeArbitrage(arbitrageParams, privateKey);
+        
+        // Record transaction in database
+        await storage.createTransaction({
+          txHash,
+          userAddress: 'demo-user',
+          tokenPair: opportunity.tokenPair,
+          buyDex: opportunity.buyDex,
+          sellDex: opportunity.sellDex,
+          amountIn: flashloanAmount,
+          expectedProfit: opportunity.estimatedProfit,
+          actualProfit: '0', // Will be updated when transaction confirms
+          gasCost: '0.002',
+          isFlashloan: useFlashloan,
+          status: 'pending'
+        });
+
+        res.json({
+          success: true,
+          txHash,
+          flashloanAmount,
+          message: 'Real blockchain transaction submitted to Base network',
+          explorerUrl: `https://basescan.org/tx/${txHash}`,
+          opportunity: {
+            tokenPair: opportunity.tokenPair,
+            profit: opportunity.estimatedProfit,
+            buyDex: opportunity.buyDex,
+            sellDex: opportunity.sellDex
+          }
+        });
+
+      } catch (contractError: any) {
+        console.error('Contract execution error:', contractError);
+        res.status(400).json({
+          success: false,
+          error: `Transaction failed: ${contractError.message}`,
+          details: 'Check wallet balance, gas fees, and network connectivity'
+        });
+      }
     } catch (error) {
       console.error('Error executing automated arbitrage:', error);
       res.status(500).json({ error: 'Failed to execute arbitrage' });
@@ -424,18 +505,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Authentication middleware
-  const requireAuth = async (req: any, res: any, next: any) => {
-    try {
-      const token = req.headers.authorization?.replace('Bearer ', '');
-      if (!token) {
-        return res.status(401).json({ message: 'No token provided' });
-      }
 
-      const user = await authService.validateToken(token);
-      if (!user) {
-        return res.status(401).json({ message: 'Invalid token' });
-      }
 
       req.user = user;
       next();
