@@ -421,7 +421,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     priceMonitor.startMonitoring();
   }
 
-  // WebSocket server setup
+  // Create HTTP server
   const httpServer = createServer(app);
   
   const wss = new WebSocketServer({ 
@@ -612,7 +612,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize real-time arbitrage monitoring with WebSocket
   const { realTimeArbitrage } = await import('./real-time-arbitrage');
   realTimeArbitrage.setupWebSocket(httpServer);
-  await realTimeArbitrage.startMonitoring();
+  realTimeArbitrage.startMonitoring();
   
   return httpServer;
 }
