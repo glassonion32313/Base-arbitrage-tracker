@@ -43,7 +43,7 @@ export class TradeExecutor {
         const allOpportunities = await storage.getArbitrageOpportunities({ limit: 20 });
         const recentOpportunities = allOpportunities.filter(opp => {
           const lastUpdated = opp.lastUpdated ? new Date(opp.lastUpdated) : new Date();
-          return new Date().getTime() - lastUpdated.getTime() < 30 * 60 * 1000; // Within 30 minutes
+          return new Date().getTime() - lastUpdated.getTime() < 5 * 60 * 1000; // Within 5 minutes
         });
         
         if (recentOpportunities.length > 0) {

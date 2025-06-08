@@ -179,19 +179,29 @@ export class DatabaseStorage implements IStorage {
       
       let results = await query.orderBy(desc(arbitrageOpportunities.estimatedProfit));
       
+      // Remove duplicates based on token pair and DEX combination
+      const uniqueResults = results.filter((opportunity, index, array) => {
+        const key = `${opportunity.tokenPair}-${opportunity.buyDex}-${opportunity.sellDex}`;
+        return array.findIndex(item => 
+          `${item.tokenPair}-${item.buyDex}-${item.sellDex}` === key
+        ) === index;
+      });
+      
+      let filteredResults = uniqueResults;
+      
       if (filters?.minProfit !== undefined) {
-        results = results.filter(op => parseFloat(op.estimatedProfit) >= filters.minProfit!);
+        filteredResults = filteredResults.filter(op => parseFloat(op.estimatedProfit) >= filters.minProfit!);
       }
       
       if (filters?.offset) {
-        results = results.slice(filters.offset);
+        filteredResults = filteredResults.slice(filters.offset);
       }
       
       if (filters?.limit) {
-        results = results.slice(0, filters.limit);
+        filteredResults = filteredResults.slice(0, filters.limit);
       }
       
-      return results;
+      return filteredResults;
     } catch (error) {
       console.error('Failed to fetch opportunities:', error);
       return [];

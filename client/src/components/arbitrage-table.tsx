@@ -231,8 +231,8 @@ export default function ArbitrageTable({ opportunities, isLoading, onRefresh }: 
                   </td>
                 </tr>
               ) : (
-                sortedOpportunities.map((opportunity) => (
-                  <tr key={opportunity.id} className="hover:bg-dark-tertiary transition-colors">
+                sortedOpportunities.map((opportunity, index) => (
+                  <tr key={`${opportunity.id}-${opportunity.lastUpdated}-${index}`} className="hover:bg-dark-tertiary transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex -space-x-2">
