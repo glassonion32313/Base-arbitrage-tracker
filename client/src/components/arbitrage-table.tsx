@@ -2,9 +2,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowUpDown, ExternalLink, Trash2 } from "lucide-react";
-import TradeModal from "./trade-modal";
+import { Switch } from "@/components/ui/switch";
+import { ArrowUpDown, ExternalLink, Trash2, Zap, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import type { ArbitrageOpportunity } from "@shared/schema";
 
 interface ArbitrageTableProps {
@@ -14,11 +16,13 @@ interface ArbitrageTableProps {
 }
 
 export default function ArbitrageTable({ opportunities, isLoading, onRefresh }: ArbitrageTableProps) {
-  const [selectedOpportunity, setSelectedOpportunity] = useState<ArbitrageOpportunity | null>(null);
   const [sortField, setSortField] = useState<keyof ArbitrageOpportunity>("estimatedProfit");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [isClearing, setIsClearing] = useState(false);
+  const [flashloanEnabled, setFlashloanEnabled] = useState(true);
+  const [executingOpportunities, setExecutingOpportunities] = useState<Set<number>>(new Set());
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const handleSort = (field: keyof ArbitrageOpportunity) => {
     if (sortField === field) {
@@ -289,11 +293,22 @@ export default function ArbitrageTable({ opportunities, isLoading, onRefresh }: 
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <Button 
-                        onClick={() => setSelectedOpportunity(opportunity)}
-                        className="bg-primary-blue hover:bg-blue-600 text-white"
+                        onClick={() => handleExecuteArbitrage(opportunity)}
+                        disabled={executingOpportunities.has(opportunity.id)}
+                        className="bg-primary-blue hover:bg-blue-600 text-white disabled:opacity-50"
                         size="sm"
                       >
-                        Execute
+                        {executingOpportunities.has(opportunity.id) ? (
+                          <>
+                            <Zap className="w-3 h-3 mr-1 animate-pulse" />
+                            Executing
+                          </>
+                        ) : (
+                          <>
+                            <DollarSign className="w-3 h-3 mr-1" />
+                            Execute
+                          </>
+                        )}
                       </Button>
                     </td>
                   </tr>

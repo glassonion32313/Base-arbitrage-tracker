@@ -213,6 +213,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get Balancer V2 flashloan capabilities
+  app.get('/api/flashloan/capabilities', async (req, res) => {
+    try {
+      const { balancerService } = await import('./balancer-service');
+      const capabilities = balancerService.getAllFlashloanCapabilities();
+      res.json(capabilities);
+    } catch (error) {
+      console.error('Error fetching flashloan capabilities:', error);
+      res.status(500).json({ error: 'Failed to fetch flashloan capabilities' });
+    }
+  });
+
+  // Get optimal flashloan amount for a token
+  app.post('/api/flashloan/optimal-amount', async (req, res) => {
+    try {
+      const { tokenSymbol, requestedAmount } = req.body;
+      const { balancerService } = await import('./balancer-service');
+      const optimalAmount = balancerService.getOptimalFlashloanAmount(tokenSymbol, requestedAmount);
+      res.json({ optimalAmount });
+    } catch (error) {
+      console.error('Error calculating optimal flashloan amount:', error);
+      res.status(500).json({ error: 'Failed to calculate optimal amount' });
+    }
+  });
+
+  // Execute arbitrage with automatic flashloan
+  app.post('/api/arbitrage/execute-auto', async (req, res) => {
+    try {
+      const { opportunityId, useFlashloan } = req.body;
+      
+      // Get opportunity details
+      const opportunity = await storage.getArbitrageOpportunity(opportunityId);
+      if (!opportunity) {
+        return res.status(404).json({ error: 'Opportunity not found' });
+      }
+
+      let flashloanAmount = '0';
+      if (useFlashloan) {
+        const { balancerService } = await import('./balancer-service');
+        flashloanAmount = balancerService.getOptimalFlashloanAmount(
+          opportunity.token0Symbol,
+          opportunity.estimatedProfit
+        );
+      }
+
+      // Execute the trade
+      const { tradeExecutor } = await import('./trade-executor');
+      const result = await tradeExecutor.executeArbitrage(opportunity, {
+        useFlashloan,
+        flashloanAmount,
+        autoOptimize: true
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error('Error executing automated arbitrage:', error);
+      res.status(500).json({ error: 'Failed to execute arbitrage' });
+    }
+  });
+
   // Get settings
   app.get("/api/settings/:key", async (req, res) => {
     try {

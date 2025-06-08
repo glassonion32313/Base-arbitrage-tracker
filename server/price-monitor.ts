@@ -27,6 +27,17 @@ export class PriceMonitor {
 
   constructor() {
     this.initializePriceSources();
+    this.initializeBalancerService();
+  }
+
+  private async initializeBalancerService() {
+    try {
+      const { balancerService } = await import('./balancer-service');
+      await balancerService.startMonitoring();
+      console.log('Balancer V2 flashloan monitoring started with 7-minute intervals');
+    } catch (error) {
+      console.error('Failed to initialize Balancer service:', error);
+    }
   }
 
   private initializePriceSources() {
