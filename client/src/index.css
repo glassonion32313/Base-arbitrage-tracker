@@ -1,0 +1,132 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(240, 10%, 3.9%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 3.7%, 15.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --popover: hsl(240, 10%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 3.7%, 15.9%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(240, 3.7%, 15.9%);
+  --primary: hsl(217, 91%, 60%);
+  --primary-foreground: hsl(0, 0%, 98%);
+  --secondary: hsl(240, 3.7%, 15.9%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --accent: hsl(240, 3.7%, 15.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --ring: hsl(240, 4.9%, 83.9%);
+  --radius: 0.5rem;
+  
+  /* Custom colors for arbitrage scanner */
+  --dark-bg: hsl(222, 84%, 5%);
+  --dark-secondary: hsl(215, 28%, 17%);
+  --dark-tertiary: hsl(215, 20%, 25%);
+  --profit-green: hsl(142, 76%, 36%);
+  --loss-red: hsl(0, 84%, 60%);
+  --warning-amber: hsl(43, 96%, 56%);
+  --primary-blue: hsl(217, 91%, 60%);
+}
+
+.dark {
+  --background: hsl(240, 10%, 3.9%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 3.7%, 15.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --popover: hsl(240, 10%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 3.9%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(240, 3.7%, 15.9%);
+  --primary: hsl(217, 91%, 60%);
+  --primary-foreground: hsl(0, 0%, 98%);
+  --secondary: hsl(240, 3.7%, 15.9%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --accent: hsl(240, 3.7%, 15.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --ring: hsl(240, 4.9%, 83.9%);
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased;
+    background-color: var(--dark-bg);
+    color: var(--foreground);
+  }
+}
+
+@layer utilities {
+  .bg-dark-bg {
+    background-color: var(--dark-bg);
+  }
+  
+  .bg-dark-secondary {
+    background-color: var(--dark-secondary);
+  }
+  
+  .bg-dark-tertiary {
+    background-color: var(--dark-tertiary);
+  }
+  
+  .text-profit-green {
+    color: var(--profit-green);
+  }
+  
+  .bg-profit-green {
+    background-color: var(--profit-green);
+  }
+  
+  .text-loss-red {
+    color: var(--loss-red);
+  }
+  
+  .bg-loss-red {
+    background-color: var(--loss-red);
+  }
+  
+  .text-warning-amber {
+    color: var(--warning-amber);
+  }
+  
+  .bg-warning-amber {
+    background-color: var(--warning-amber);
+  }
+  
+  .text-primary-blue {
+    color: var(--primary-blue);
+  }
+  
+  .bg-primary-blue {
+    background-color: var(--primary-blue);
+  }
+  
+  .border-slate-700 {
+    border-color: hsl(215, 25%, 27%);
+  }
+  
+  .border-slate-600 {
+    border-color: hsl(215, 25%, 35%);
+  }
+  
+  .text-slate-400 {
+    color: hsl(215, 20%, 65%);
+  }
+  
+  .text-slate-300 {
+    color: hsl(215, 20%, 75%);
+  }
+}
