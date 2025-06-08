@@ -5,6 +5,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { useToast } from '@/hooks/use-toast';
 import { User, Wallet, Settings, LogOut, Copy } from 'lucide-react';
 import AuthModal from './auth-modal';
+import SimpleAccountManager from './simple-account-manager';
 
 interface User {
   id: number;

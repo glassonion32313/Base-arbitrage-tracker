@@ -1,28 +1,65 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/use-auth';
-import { User, Wallet, Eye, EyeOff, Copy, Shield, LogOut } from 'lucide-react';
+import { User, Wallet, Eye, EyeOff, Copy, Shield } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 
 export default function AccountManager() {
-  const { user, logout, updatePrivateKey } = useAuth();
   const [showPrivateKey, setShowPrivateKey] = useState(false);
   const [privateKeyInput, setPrivateKeyInput] = useState('');
+  const [user, setUser] = useState<any>(null);
   const { toast } = useToast();
 
+  // Get current user from localStorage
+  useState(async () => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      try {
+        const response = await fetch('/api/auth/me', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData.user);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user data');
+      }
+    }
+  });
+
   const updatePrivateKeyMutation = useMutation({
-    mutationFn: updatePrivateKey,
+    mutationFn: async (privateKey: string) => {
+      const token = localStorage.getItem('auth_token');
+      if (!token) throw new Error('Not authenticated');
+      
+      const response = await fetch('/api/auth/private-key', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ privateKey })
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to update private key');
+      }
+      
+      return await response.json();
+    },
     onSuccess: (data: any) => {
       toast({
         title: "Private Key Updated",
         description: `Wallet connected: ${data.walletAddress?.slice(0, 6)}...${data.walletAddress?.slice(-4)}`,
       });
       setPrivateKeyInput('');
+      setUser({ ...user, walletAddress: data.walletAddress, hasPrivateKey: true });
     },
     onError: (error: any) => {
       toast({
@@ -43,6 +80,17 @@ export default function AccountManager() {
       });
       return;
     }
+    
+    // Basic validation for Ethereum private key
+    if (privateKeyInput.length !== 64 && privateKeyInput.length !== 66) {
+      toast({
+        title: "Invalid Private Key",
+        description: "Private key must be 64 characters long (without 0x prefix)",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     updatePrivateKeyMutation.mutate(privateKeyInput);
   };
 
