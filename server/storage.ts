@@ -38,6 +38,8 @@ export interface IStorage {
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
   updateTransaction(id: number, updates: Partial<InsertTransaction>): Promise<Transaction | undefined>;
   getTransactionByHash(txHash: string): Promise<Transaction | undefined>;
+  deleteTransaction(id: number): Promise<boolean>;
+  clearAllTransactions(): Promise<number>;
 
   // DEXes
   getDexes(enabledOnly?: boolean): Promise<Dex[]>;
@@ -316,6 +318,28 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error('Failed to fetch transaction by hash:', error);
       return undefined;
+    }
+  }
+
+  async deleteTransaction(id: number): Promise<boolean> {
+    try {
+      await db.delete(transactions).where(eq(transactions.id, id));
+      return true;
+    } catch (error) {
+      console.error('Failed to delete transaction:', error);
+      return false;
+    }
+  }
+
+  async clearAllTransactions(): Promise<number> {
+    try {
+      const allTransactions = await db.select().from(transactions);
+      const count = allTransactions.length;
+      await db.delete(transactions);
+      return count;
+    } catch (error) {
+      console.error('Failed to clear all transactions:', error);
+      return 0;
     }
   }
 

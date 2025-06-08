@@ -136,6 +136,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Clear all transactions
+  app.delete("/api/transactions/all", async (req, res) => {
+    try {
+      const deletedCount = await storage.clearAllTransactions();
+      res.json({ cleared: deletedCount, message: `Cleared ${deletedCount} transactions` });
+    } catch (error) {
+      console.error('Failed to clear transactions:', error);
+      res.status(500).json({ error: 'Failed to clear transactions' });
+    }
+  });
+
+  // Clear stale opportunities (older than specified minutes)
+  app.delete('/api/opportunities/stale', async (req, res) => {
+    try {
+      const minutes = parseInt(req.query.minutes as string) || 5;
+      const count = await storage.clearStaleOpportunities(minutes);
+      res.json({ cleared: count, message: `Cleared ${count} stale opportunities` });
+    } catch (error) {
+      console.error('Failed to clear stale opportunities:', error);
+      res.status(500).json({ error: 'Failed to clear stale opportunities' });
+    }
+  });
+
+  // Clear all opportunities
+  app.delete('/api/opportunities/all', async (req, res) => {
+    try {
+      const count = await storage.clearStaleOpportunities(0); // Clear all
+      res.json({ cleared: count, message: `Cleared all ${count} opportunities` });
+    } catch (error) {
+      console.error('Failed to clear all opportunities:', error);
+      res.status(500).json({ error: 'Failed to clear all opportunities' });
+    }
+  });
+
   // Get DEXes
   app.get("/api/dexes", async (req, res) => {
     try {

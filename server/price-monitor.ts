@@ -77,6 +77,9 @@ export class PriceMonitor {
     try {
       console.log("Scanning for arbitrage opportunities...");
       
+      // Clear stale opportunities first (older than 2 minutes)
+      await storage.clearStaleOpportunities(2);
+      
       // Fetch prices from all sources
       const allPrices: TokenPrice[] = [];
       
