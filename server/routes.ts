@@ -404,5 +404,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }));
   });
 
+  // Monitoring endpoints
+  app.get("/api/monitor/status", (req, res) => {
+    res.json({
+      isMonitoring: priceMonitor.isMonitoring(),
+      status: priceMonitor.getStatus()
+    });
+  });
+
+  app.post("/api/monitor/start", (req, res) => {
+    try {
+      priceMonitor.startMonitoring();
+      res.json({ 
+        message: "Price monitoring started", 
+        status: priceMonitor.getStatus() 
+      });
+    } catch (error) {
+      console.error("Monitor start error:", error);
+      res.status(500).json({ message: "Failed to start monitoring" });
+    }
+  });
+
+  app.post("/api/monitor/stop", (req, res) => {
+    try {
+      priceMonitor.stopMonitoring();
+      res.json({ 
+        message: "Price monitoring stopped", 
+        status: priceMonitor.getStatus() 
+      });
+    } catch (error) {
+      console.error("Monitor stop error:", error);
+      res.status(500).json({ message: "Failed to stop monitoring" });
+    }
+  });
+
+  // Contract endpoints
+  app.get("/api/contract/address", (req, res) => {
+    if (contractService) {
+      res.json({ 
+        address: contractService.getContractAddress(),
+        network: "Base Mainnet",
+        chainId: 8453
+      });
+    } else {
+      res.status(503).json({ error: "Contract service not available" });
+    }
+  });
+
+  app.get("/api/contract/gas", async (req, res) => {
+    if (!contractService) {
+      return res.status(503).json({ error: "Contract service not available" });
+    }
+
+    try {
+      const gasPrices = await contractService.getCurrentGasPrice();
+      res.json(gasPrices);
+    } catch (error) {
+      console.error("Gas price error:", error);
+      res.status(500).json({ error: "Failed to fetch gas prices" });
+    }
+  });
+
   return httpServer;
 }
