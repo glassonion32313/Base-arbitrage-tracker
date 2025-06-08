@@ -130,20 +130,7 @@ export default function MEVProtection() {
     const newSettings = { ...settings, [key]: value };
     setSettings(newSettings);
     localStorage.setItem('mev-protection-settings', JSON.stringify(newSettings));
-    
-    // Update active strategies based on enabled features
-    const activeStrategies = [];
-    if (newSettings.flashbotsEnabled) activeStrategies.push('Flashbots Protect');
-    if (newSettings.privateMempool) activeStrategies.push('Private Mempool');
-    if (newSettings.frontrunProtection) activeStrategies.push('Front-run Protection');
-    if (newSettings.sandwichProtection) activeStrategies.push('Sandwich Protection');
-    if (newSettings.slippageProtection > 0) activeStrategies.push('Slippage Protection');
-    
-    setStatus(prev => ({
-      ...prev,
-      activeStrategies,
-      isProtected: newSettings.enabled && activeStrategies.length > 0
-    }));
+    updateProtectionStatus();
   };
 
   const getThreatLevelColor = (level: string) => {
