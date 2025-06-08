@@ -102,7 +102,7 @@ export default function DemoWalletConnect() {
             <CardTitle className="text-lg flex items-center gap-2">
               <Wallet className="h-5 w-5" />
               Demo Wallet
-            </div>
+            </CardTitle>
             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
               <div className="w-2 h-2 bg-green-500 rounded-full mr-2" />
               Connected
