@@ -177,6 +177,20 @@ export class ContractService {
     }
   }
 
+  async estimateGas(to: string, data: string): Promise<bigint> {
+    try {
+      const gasEstimate = await this.provider.estimateGas({
+        to,
+        data,
+        value: 0
+      });
+      return gasEstimate;
+    } catch (error) {
+      console.error('Gas estimation failed:', error);
+      return BigInt(500000); // Default gas limit
+    }
+  }
+
   async getContractBalance(tokenAddress: string): Promise<string> {
     try {
       if (tokenAddress === '0x0000000000000000000000000000000000000000') {
@@ -204,8 +218,8 @@ export class ContractService {
 let contractService: ContractService | null = null;
 
 export function getContractService(contractAddress?: string): ContractService {
-  if (!contractService && contractAddress) {
-    contractService = new ContractService(contractAddress);
+  if (!contractService) {
+    contractService = new ContractService();
   }
   
   if (!contractService) {

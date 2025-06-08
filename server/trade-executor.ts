@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
 import { authService } from './auth-service';
 import { storage } from './storage';
-import { getContractIntegration } from './contract-integration';
+import { getContractService } from './contract-service';
 
 interface TradeRequest {
   userId: number;
@@ -26,7 +26,7 @@ export class TradeExecutor {
 
   constructor() {
     this.provider = new ethers.JsonRpcProvider(`https://base-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`);
-    this.contractService = getContractIntegration();
+    this.contractService = getContractService();
   }
 
   async executeTrade(request: TradeRequest): Promise<TradeResult> {
