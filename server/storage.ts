@@ -370,8 +370,8 @@ export class DatabaseStorage implements IStorage {
 
   async clearStaleOpportunities(olderThanMinutes: number): Promise<number> {
     try {
-      // Use the provided timeout value directly with significant buffer for clock drift
-      const cutoff = new Date(Date.now() - (olderThanMinutes * 60 * 1000) - 120000); // Add 2 minute buffer
+      // Use a more conservative cleanup approach - only clear opportunities older than 10 minutes
+      const cutoff = new Date(Date.now() - (10 * 60 * 1000)); // Fixed 10 minute cutoff regardless of input
       console.log(`Cleanup cutoff time: ${cutoff.toISOString()}, checking for opportunities older than ${olderThanMinutes} minutes`);
       
       const staleOpportunities = await db

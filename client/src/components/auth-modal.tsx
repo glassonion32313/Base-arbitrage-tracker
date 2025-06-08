@@ -41,7 +41,8 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
     mutationFn: async (data: { username: string; password: string }) => {
       return await apiRequest('/api/auth/login', {
         method: 'POST',
-        body: data,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
       });
     },
     onSuccess: (data) => {
@@ -66,7 +67,8 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
     mutationFn: async (data: { username: string; email: string; password: string; privateKey?: string }) => {
       return await apiRequest('/api/auth/register', {
         method: 'POST',
-        body: data,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
       });
     },
     onSuccess: (data) => {
