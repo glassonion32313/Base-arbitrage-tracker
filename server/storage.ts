@@ -3,6 +3,7 @@ import {
   transactions, 
   dexes, 
   settings,
+  users,
   arbitrageHistory,
   dailyStats,
   tokenPairStats,
@@ -14,6 +15,8 @@ import {
   type InsertDex,
   type Setting,
   type InsertSetting,
+  type User,
+  type UpsertUser,
   type ArbitrageHistory,
   type InsertArbitrageHistory,
   type DailyStats,
@@ -60,6 +63,10 @@ export interface IStorage {
   // Settings
   getSetting(key: string): Promise<Setting | undefined>;
   setSetting(setting: InsertSetting): Promise<Setting>;
+
+  // User operations (required for Replit Auth)
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
 
   // Stats
   getStats(): Promise<{
