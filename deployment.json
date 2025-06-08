@@ -1,0 +1,11 @@
+{
+  "address": "0x675f26375aB7E5a35279CF3AE37C26a3004b9ae4",
+  "transaction_hash": "0x9f2f00a0e6b94d9705e407f942fdbbe88bce5afc3182d647b16835ccc6095ba0",
+  "block_number": 31284626,
+  "gas_used": 2058792,
+  "deployer": "0xa4Cadc8C3b9Ec33E1053F3309A4bAABc2c8a8895",
+  "network": "Base Mainnet",
+  "chain_id": 8453,
+  "timestamp": "2025-06-08T00:56:39.696508",
+  "rpc_url": "https://base-mainnet.g.alchemy.com/v2/sle3H9fASy51J1lvmN3l8QS5n-dd66fH"
+}

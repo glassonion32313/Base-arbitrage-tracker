@@ -1,10 +1,6 @@
 import { ethers } from 'ethers';
-
-interface ContractConfig {
-  address: string;
-  abi: any[];
-  rpcUrl: string;
-}
+import * as fs from 'fs';
+import * as path from 'path';
 
 interface ArbitrageParams {
   tokenA: string;
@@ -15,9 +11,21 @@ interface ArbitrageParams {
   minProfit: string;
 }
 
+interface DeploymentInfo {
+  address: string;
+  transaction_hash: string;
+  block_number: number;
+  gas_used: number;
+  deployer: string;
+  network: string;
+  chain_id: number;
+}
+
 export class ContractService {
   private provider: ethers.JsonRpcProvider;
   private contract: ethers.Contract;
+  private contractAddress: string;
+  private contractABI: any[];
   
   // Base network DEX router addresses
   private readonly DEX_ROUTERS = {
@@ -34,17 +42,17 @@ export class ContractService {
     'UNI': '0xc3De830EA07524a0761646a6a4e4be0e114A3C83'
   };
 
-  private readonly CONTRACT_ABI = [
-    "function executeArbitrage((address,address,uint256,address,address,uint256)) external",
-    "function estimateProfit((address,address,uint256,address,address,uint256)) external view returns (uint256)",
-    "function authorizeBot(address bot) external",
-    "function withdraw(address token) external"
-  ];
-
-  constructor(contractAddress: string) {
+  constructor() {
+    // Load deployment info and ABI
+    const deploymentInfo: DeploymentInfo = JSON.parse(fs.readFileSync('deployment.json', 'utf8'));
+    this.contractABI = JSON.parse(fs.readFileSync('arbitragebot_abi.json', 'utf8'));
+    this.contractAddress = deploymentInfo.address;
+    
+    console.log(`Initializing contract service with address: ${this.contractAddress}`);
+    
     const rpcUrl = `https://base-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`;
     this.provider = new ethers.JsonRpcProvider(rpcUrl);
-    this.contract = new ethers.Contract(contractAddress, this.CONTRACT_ABI, this.provider);
+    this.contract = new ethers.Contract(this.contractAddress, this.contractABI, this.provider);
   }
 
   async estimateArbitrageProfit(params: ArbitrageParams): Promise<bigint> {
