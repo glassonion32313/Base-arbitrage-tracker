@@ -750,7 +750,7 @@ export class DatabaseStorage implements IStorage {
       }, 0);
       
       const avgProfit = totalTrades > 0 ? totalProfit / totalTrades : 0;
-      const bestTrade = totalTrades > 0 ? Math.max(...transactionData.map(tx => parseFloat(tx.estimatedProfit))) : 0;
+      const bestTrade = totalTrades > 0 ? Math.max(...transactionData.map(tx => parseFloat(tx.expectedProfit))) : 0;
       const successRate = totalTrades > 0 ? (successfulTrades / totalTrades) * 100 : 0;
 
       return {
