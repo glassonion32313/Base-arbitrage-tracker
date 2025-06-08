@@ -404,5 +404,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }));
   });
 
+  // Bot control endpoints
+  app.get('/api/bot/status', async (req, res) => {
+    try {
+      const { priceMonitor } = await import('./price-monitor');
+      
+      res.json({
+        monitoring: priceMonitor.isMonitoring(),
+        status: priceMonitor.getStatus()
+      });
+    } catch (error) {
+      console.error('Error fetching bot status:', error);
+      res.status(500).json({ message: 'Failed to fetch bot status' });
+    }
+  });
+
+  app.post('/api/bot/start', async (req, res) => {
+    try {
+      const { priceMonitor } = await import('./price-monitor');
+      
+      if (!priceMonitor.isMonitoring()) {
+        await priceMonitor.startMonitoring();
+        res.json({ message: 'Bot started successfully', monitoring: true });
+      } else {
+        res.json({ message: 'Bot is already running', monitoring: true });
+      }
+    } catch (error) {
+      console.error('Error starting bot:', error);
+      res.status(500).json({ message: 'Failed to start bot' });
+    }
+  });
+
+  app.post('/api/bot/stop', async (req, res) => {
+    try {
+      const { priceMonitor } = await import('./price-monitor');
+      
+      if (priceMonitor.isMonitoring()) {
+        priceMonitor.stopMonitoring();
+        res.json({ message: 'Bot stopped successfully', monitoring: false });
+      } else {
+        res.json({ message: 'Bot is already stopped', monitoring: false });
+      }
+    } catch (error) {
+      console.error('Error stopping bot:', error);
+      res.status(500).json({ message: 'Failed to stop bot' });
+    }
+  });
+
+  // Set user private key for trading
+  app.post('/api/trading/set-private-key', async (req, res) => {
+    try {
+      const { privateKey } = req.body;
+      
+      if (!privateKey || !privateKey.startsWith('0x')) {
+        return res.status(400).json({ error: 'Valid private key required (must start with 0x)' });
+      }
+
+      // Set environment variable for trading
+      process.env.TRADING_PRIVATE_KEY = privateKey;
+      
+      // Get wallet info using the new private key
+      const { ethers } = await import('ethers');
+      const provider = new ethers.JsonRpcProvider(
+        `https://base-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`
+      );
+      const wallet = new ethers.Wallet(privateKey, provider);
+      const balance = await provider.getBalance(wallet.address);
+      
+      res.json({
+        message: 'Private key configured successfully',
+        walletAddress: wallet.address,
+        balance: ethers.formatEther(balance),
+        network: 'Base Mainnet',
+        readyForTrading: parseFloat(ethers.formatEther(balance)) > 0.01
+      });
+    } catch (error) {
+      console.error('Error setting private key:', error);
+      res.status(500).json({ message: 'Failed to set private key' });
+    }
+  });
+
+  // Get current wallet info
+  app.get('/api/trading/wallet', async (req, res) => {
+    try {
+      if (!process.env.TRADING_PRIVATE_KEY) {
+        return res.json({
+          configured: false,
+          message: 'No private key configured. Use /api/trading/set-private-key to set one.'
+        });
+      }
+
+      const { ethers } = await import('ethers');
+      const provider = new ethers.JsonRpcProvider(
+        `https://base-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`
+      );
+      const wallet = new ethers.Wallet(process.env.TRADING_PRIVATE_KEY, provider);
+      const balance = await provider.getBalance(wallet.address);
+      
+      res.json({
+        configured: true,
+        address: wallet.address,
+        balance: ethers.formatEther(balance),
+        network: 'Base Mainnet',
+        fundingRequired: parseFloat(ethers.formatEther(balance)) < 0.01,
+        minimumBalance: '0.01 ETH'
+      });
+    } catch (error) {
+      console.error('Error fetching wallet info:', error);
+      res.status(500).json({ message: 'Failed to fetch wallet information' });
+    }
+  });
+
   return httpServer;
 }
