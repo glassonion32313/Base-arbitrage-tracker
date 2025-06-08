@@ -136,9 +136,9 @@ export class PriceMonitor {
       console.log("Scanning for arbitrage opportunities...");
       
       // Clean up old opportunities (older than 5 minutes) to keep fresh data visible
-      const cutoffTime = new Date(Date.now() - 300000); // 5 minutes ago
-      console.log(`Cleanup cutoff time: ${cutoffTime.toISOString()}, checking for opportunities older than 5 minutes`);
-      await storage.cleanupStaleOpportunities(cutoffTime);
+      console.log(`Checking for opportunities older than 5 minutes`);
+      const staleCount = await storage.clearStaleOpportunities(5);
+      console.log(`Cleared ${staleCount} stale opportunities`);
       
       // Fetch live prices from real DEXes on Base network
       let allPrices: TokenPrice[];
