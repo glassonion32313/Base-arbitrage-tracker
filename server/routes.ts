@@ -5,6 +5,9 @@ import { priceMonitor } from "./price-monitor";
 import { insertArbitrageOpportunitySchema, insertTransactionSchema } from "@shared/schema";
 import { z } from "zod";
 
+// Contract service will be initialized later
+let contractService: any = null;
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Get arbitrage opportunities with optional filters
   app.get("/api/opportunities", async (req, res) => {
@@ -238,6 +241,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Price monitoring stopped", status: priceMonitor.getStatus() });
     } catch (error) {
       res.status(500).json({ message: "Failed to stop monitoring" });
+    }
+  });
+
+  // Contract integration endpoints
+  app.get("/api/contract/address", (req, res) => {
+    if (contractService) {
+      res.json({ 
+        address: contractService.getContractAddress(),
+        network: "Base Mainnet",
+        chainId: 8453
+      });
+    } else {
+      res.status(503).json({ error: "Contract service not available" });
+    }
+  });
+
+  app.post("/api/contract/estimate", async (req, res) => {
+    if (!contractService) {
+      return res.status(503).json({ error: "Contract service not available" });
+    }
+
+    try {
+      const { tokenA, tokenB, amountIn, buyDex, sellDex, minProfit } = req.body;
+      const estimatedProfit = await contractService.estimateArbitrageProfit({
+        tokenA, tokenB, amountIn, buyDex, sellDex, minProfit
+      });
+      res.json({ estimatedProfit });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/contract/gas", async (req, res) => {
+    if (!contractService) {
+      return res.status(503).json({ error: "Contract service not available" });
+    }
+
+    try {
+      const gasPrices = await contractService.getCurrentGasPrice();
+      res.json(gasPrices);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
     }
   });
 
