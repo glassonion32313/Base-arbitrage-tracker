@@ -23,13 +23,13 @@ export default function ArbitrageScanner() {
   });
   const { toast } = useToast();
 
-  const { data: opportunities = [], isLoading, refetch } = useQuery({
+  const { data: opportunities = [], isLoading, refetch } = useQuery<any[]>({
     queryKey: ["/api/opportunities", filters.minProfit],
     enabled: true,
     refetchInterval: autoRefresh ? 30000 : false,
   });
 
-  const { data: stats } = useQuery({
+  const { data: stats } = useQuery<any>({
     queryKey: ["/api/stats"],
     refetchInterval: autoRefresh ? 30000 : false,
   });
@@ -140,11 +140,11 @@ export default function ArbitrageScanner() {
 
               <TabsContent value="opportunities" className="space-y-6">
                 {/* Stats Cards */}
-                <StatsCards stats={stats} />
+                <StatsCards stats={stats as any} />
 
                 {/* Opportunities Table */}
                 <ArbitrageTable 
-                  opportunities={opportunities}
+                  opportunities={opportunities as any}
                   isLoading={isLoading}
                   onRefresh={handleRefresh}
                 />

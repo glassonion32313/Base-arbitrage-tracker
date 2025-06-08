@@ -114,8 +114,7 @@ export class RealDexService {
                 estimatedProfit: grossProfit.toFixed(2),
                 gasCost: gasCost.toFixed(2),
                 netProfit: netProfit.toFixed(2),
-                liquidity: lowest.liquidity,
-                createdAt: new Date(),
+                liquidity: lowest.liquidity ?? null,
                 lastUpdated: new Date()
               });
             }
