@@ -19,6 +19,7 @@ export const arbitrageOpportunities = pgTable("arbitrage_opportunities", {
   netProfit: decimal("net_profit", { precision: 10, scale: 2 }).notNull(),
   liquidity: decimal("liquidity", { precision: 20, scale: 2 }),
   isActive: boolean("is_active").default(true),
+  isBeingTraded: boolean("is_being_traded").default(false),
   lastUpdated: timestamp("last_updated").defaultNow(),
 });
 

@@ -341,12 +341,22 @@ export class DatabaseStorage implements IStorage {
       const staleOpportunities = await db
         .select()
         .from(arbitrageOpportunities)
-        .where(lt(arbitrageOpportunities.lastUpdated, cutoff));
+        .where(
+          and(
+            lt(arbitrageOpportunities.lastUpdated, cutoff),
+            eq(arbitrageOpportunities.isBeingTraded, false)
+          )
+        );
       
       if (staleOpportunities.length > 0) {
         await db
           .delete(arbitrageOpportunities)
-          .where(lt(arbitrageOpportunities.lastUpdated, cutoff));
+          .where(
+            and(
+              lt(arbitrageOpportunities.lastUpdated, cutoff),
+              eq(arbitrageOpportunities.isBeingTraded, false)
+            )
+          );
         
         console.log(`Cleared ${staleOpportunities.length} opportunities older than ${protectedMinutes < 1 ? Math.round(protectedMinutes * 60) + ' seconds' : protectedMinutes + ' minutes'}`);
       }
