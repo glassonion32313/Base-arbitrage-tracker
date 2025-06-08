@@ -60,6 +60,49 @@ export default function ArbitrageTable({ opportunities, isLoading, onRefresh }: 
     return "Low";
   };
 
+  // Auto-execute arbitrage mutation
+  const executeArbitrageMutation = useMutation({
+    mutationFn: async ({ opportunityId, useFlashloan }: { opportunityId: number; useFlashloan: boolean }) => {
+      return await apiRequest(`/api/arbitrage/execute-auto`, {
+        method: 'POST',
+        body: { opportunityId, useFlashloan }
+      });
+    },
+    onSuccess: (data, { opportunityId }) => {
+      toast({
+        title: "Trade Executed",
+        description: `Arbitrage trade executed successfully with ${data.flashloanAmount ? 'flashloan' : 'wallet balance'}`,
+      });
+      setExecutingOpportunities(prev => {
+        const next = new Set(prev);
+        next.delete(opportunityId);
+        return next;
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/opportunities'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
+    },
+    onError: (error, { opportunityId }) => {
+      toast({
+        title: "Execution Failed",
+        description: error.message || "Failed to execute arbitrage trade",
+        variant: "destructive",
+      });
+      setExecutingOpportunities(prev => {
+        const next = new Set(prev);
+        next.delete(opportunityId);
+        return next;
+      });
+    }
+  });
+
+  const handleExecuteArbitrage = async (opportunity: ArbitrageOpportunity) => {
+    setExecutingOpportunities(prev => new Set(prev).add(opportunity.id));
+    executeArbitrageMutation.mutate({
+      opportunityId: opportunity.id,
+      useFlashloan: flashloanEnabled
+    });
+  };
+
   const handleClearStale = async () => {
     setIsClearing(true);
     try {
@@ -142,7 +185,17 @@ export default function ArbitrageTable({ opportunities, isLoading, onRefresh }: 
       <div className="bg-dark-secondary rounded-xl border border-slate-700 overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">Arbitrage Opportunities</h2>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-4">
+            {/* Flashloan Control */}
+            <div className="flex items-center space-x-2 px-3 py-1 bg-slate-800 rounded-lg">
+              <Zap className="w-4 h-4 text-primary-blue" />
+              <span className="text-sm text-slate-300">Flashloan</span>
+              <Switch
+                checked={flashloanEnabled}
+                onCheckedChange={setFlashloanEnabled}
+              />
+            </div>
+            
             <Button
               variant="outline"
               size="sm"
@@ -163,10 +216,6 @@ export default function ArbitrageTable({ opportunities, isLoading, onRefresh }: 
               <Trash2 className="w-3 h-3 mr-1" />
               Clear All
             </Button>
-            <div className="flex items-center space-x-2 ml-4">
-              <span className="text-sm text-slate-400">Last updated:</span>
-              <span className="text-sm text-profit-green font-medium">Now</span>
-            </div>
           </div>
         </div>
 
@@ -326,13 +375,20 @@ export default function ArbitrageTable({ opportunities, isLoading, onRefresh }: 
         </div>
       </div>
 
-      {selectedOpportunity && (
-        <TradeModal
-          opportunity={selectedOpportunity}
-          isOpen={!!selectedOpportunity}
-          onClose={() => setSelectedOpportunity(null)}
-        />
-      )}
+      {/* Flashloan Status Footer */}
+      <div className="px-6 py-3 bg-slate-800 border-t border-slate-700 rounded-b-lg">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Zap className="w-4 h-4 text-primary-blue" />
+            <span className="text-sm text-slate-300">
+              Flashloan: {flashloanEnabled ? 'Enabled' : 'Disabled'}
+            </span>
+          </div>
+          <div className="text-xs text-slate-500">
+            System auto-optimizes trade amounts and flashloan sizes
+          </div>
+        </div>
+      </div>
     </>
   );
 }
