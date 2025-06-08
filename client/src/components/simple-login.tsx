@@ -31,7 +31,7 @@ export default function SimpleLogin({ onSuccess }: { onSuccess: () => void }) {
     mutationFn: async (data: LoginData) => {
       return await apiRequest("/api/auth/login", {
         method: "POST",
-        body: JSON.stringify(data),
+        body: data as any,
       });
     },
     onSuccess: (response: any) => {
@@ -59,7 +59,7 @@ export default function SimpleLogin({ onSuccess }: { onSuccess: () => void }) {
     mutationFn: async (data: RegisterData) => {
       return await apiRequest("/api/auth/register", {
         method: "POST",
-        body: JSON.stringify(data),
+        body: data as any,
       });
     },
     onSuccess: () => {
