@@ -215,9 +215,12 @@ export class TradeExecutor {
   // Validate trade before execution
   async validateTrade(request: TradeRequest): Promise<{ valid: boolean; error?: string }> {
     try {
-      // Check if user has private key
-      const user = await authService.validateToken(''); // This would need the actual token
-      if (!user?.hasPrivateKey) {
+      // Check if user has private key by attempting to retrieve it
+      try {
+        const privateKey = await authService.getPrivateKey(request.userId);
+        console.log(`Private key found for user ${request.userId}:`, privateKey ? 'exists' : 'missing');
+      } catch (error) {
+        console.log(`Private key validation failed for user ${request.userId}:`, error);
         return { valid: false, error: 'No wallet configured' };
       }
 
