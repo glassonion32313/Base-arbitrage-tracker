@@ -289,8 +289,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           netProfit: '6.10',
           gasCost: '1.20',
           amountIn: '1000',
-          liquidity: 'High',
-          confidence: 'High'
+          liquidity: '50000.00'
         },
         {
           tokenPair: 'USDC/USDT',
@@ -307,8 +306,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           netProfit: '2.70',
           gasCost: '0.80',
           amountIn: '10000',
-          liquidity: 'Medium',
-          confidence: 'Medium'
+          liquidity: '25000.00'
         }
       ];
 

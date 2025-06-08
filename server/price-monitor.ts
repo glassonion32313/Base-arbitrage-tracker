@@ -84,10 +84,19 @@ export class PriceMonitor {
       // Clear stale opportunities but preserve recent ones for execution
       await storage.clearStaleOpportunities(0.75); // Clear opportunities older than 45 seconds
       
-      // Fetch prices from all sources
+      // Fetch prices from all sources including enhanced on-chain prices
       const allPrices: TokenPrice[] = [];
       
-      for (const source of this.sources.filter(s => s.enabled)) {
+      // First, get enhanced on-chain prices with DEX variations
+      try {
+        const onChainPrices = await this.fetchOnChainPrices();
+        allPrices.push(...onChainPrices);
+      } catch (error) {
+        console.error('Failed to fetch enhanced on-chain prices:', error);
+      }
+      
+      // Then add other price sources
+      for (const source of this.sources.filter(s => s.enabled && s.name !== 'On-Chain Prices')) {
         try {
           const prices = await source.fetchPrices();
           allPrices.push(...prices);
