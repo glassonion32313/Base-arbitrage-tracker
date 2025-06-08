@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import { priceMonitor } from "./price-monitor";
 import { insertArbitrageOpportunitySchema, insertTransactionSchema, insertUserAccountSchema } from "@shared/schema";
 import { authService } from "./auth-service";
+import { tradeExecutor } from "./trade-executor";
 import { z } from "zod";
 
 import { getContractIntegration } from "./contract-integration";
@@ -308,6 +309,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(gasPrices);
     } catch (error) {
       res.status(500).json({ error: "Gas price fetch failed" });
+    }
+  });
+
+  // Authentication middleware
+  const requireAuth = async (req: any, res: any, next: any) => {
+    try {
+      const token = req.headers.authorization?.replace('Bearer ', '');
+      if (!token) {
+        return res.status(401).json({ message: 'No token provided' });
+      }
+
+      const user = await authService.validateToken(token);
+      if (!user) {
+        return res.status(401).json({ message: 'Invalid token' });
+      }
+
+      req.user = user;
+      next();
+    } catch (error) {
+      res.status(401).json({ message: 'Authentication failed' });
+    }
+  };
+
+  // Authentication routes
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const { username, email, password, privateKey } = req.body;
+      
+      if (!username || !email || !password) {
+        return res.status(400).json({ message: 'Username, email, and password are required' });
+      }
+
+      const result = await authService.register({
+        username,
+        email,
+        password,
+        privateKey
+      });
+
+      res.status(201).json(result);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ message: 'Username and password are required' });
+      }
+
+      const result = await authService.login({ username, password });
+      res.json(result);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/auth/logout", requireAuth, async (req: any, res) => {
+    try {
+      const token = req.headers.authorization?.replace('Bearer ', '');
+      await authService.logout(token);
+      res.json({ message: 'Logged out successfully' });
+    } catch (error) {
+      res.status(500).json({ message: 'Logout failed' });
+    }
+  });
+
+  app.get("/api/auth/me", requireAuth, async (req: any, res) => {
+    res.json({ user: req.user });
+  });
+
+  app.post("/api/auth/private-key", requireAuth, async (req: any, res) => {
+    try {
+      const { privateKey } = req.body;
+      
+      if (!privateKey) {
+        return res.status(400).json({ message: 'Private key is required' });
+      }
+
+      const walletAddress = await authService.updatePrivateKey(req.user.id, privateKey);
+      res.json({ walletAddress, message: 'Private key updated successfully' });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  // Protected trade execution
+  app.post("/api/trades/execute", requireAuth, async (req: any, res) => {
+    try {
+      const { opportunityId, tradeAmount } = req.body;
+      
+      // Get user's private key for trade execution
+      const privateKey = await authService.getPrivateKey(req.user.id);
+      
+      res.json({ 
+        message: 'Trade execution initiated',
+        opportunityId,
+        tradeAmount,
+        userWallet: req.user.walletAddress
+      });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
     }
   });
 
